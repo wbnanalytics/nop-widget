@@ -427,17 +427,17 @@ function renderNutritionistSummary(data) {
     let grandNet = 0;
 
     let html = `
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nutritionist</th>
-                        <th class="number">Total Sales</th>
-                        <th class="number">Total Net Sales</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nutritionist</th>
+                            <th class="number">Total Sales</th>
+                            <th class="number">Total Net Sales</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
 
     names.forEach(name => {
         const sales = grouped[name].sales;
@@ -485,22 +485,38 @@ function renderYearlyTable(selectedYear) {
 
     const monthly = {};
     monthOrder.forEach(month => {
-        monthly[month] = 0;
+        monthly[month] = {
+            total: 0,
+            commission: 0,
+            net: 0,
+            offline: 0
+        };
     });
 
     yearData.forEach(row => {
         let month = getMonth(row);
 
-        // normalize month (VERY IMPORTANT FIX)
         if (month) {
-            const m = month.toLowerCase().slice(0,3);
+            const m = month.toLowerCase().slice(0, 3);
             month = monthOrder.find(x => x.toLowerCase().startsWith(m)) || "";
         }
-        if (!month || monthly[month] === undefined) return;
-        monthly[month] += getTotalSales(row);
+
+        if (!month || !monthly[month]) return;
+
+        const total = getTotalSales(row);
+        const net = getNetSales(row);
+        const type = getType(row).toLowerCase();
+        const commission = total - net;
+
+        monthly[month].total += total;
+        monthly[month].net += net;
+        monthly[month].commission += commission;
+
+        if (type === "offline") {
+            monthly[month].offline += total;
+        }
     });
 
-    let grandTotal = 0;
     let html = `
         <div class="table-wrap">
             <table>
@@ -508,19 +524,44 @@ function renderYearlyTable(selectedYear) {
                     <tr>
                         <th>Months</th>
                         <th class="number">Total Sales</th>
+                        <th class="number">Commission</th>
+                        <th class="number">Net Sales</th>
+                        <th class="number">Offline Sale</th>
+                        <th class="number">Grand Total</th>
+                        <th class="number">Difference from Last Month</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
 
+    let prev = 0;
+    let totalSalesAll = 0;
+    let totalCommissionAll = 0;
+    let totalNetAll = 0;
+    let totalOfflineAll = 0;
+    let grandTotalAll = 0;
+
     monthOrder.forEach(month => {
-        const value = monthly[month];
-        grandTotal += value;
+        const m = monthly[month];
+        const grand = m.net + m.offline;
+        const diff = grand - prev;
+
+        prev = grand;
+        totalSalesAll += m.total;
+        totalCommissionAll += m.commission;
+        totalNetAll += m.net;
+        totalOfflineAll += m.offline;
+        grandTotalAll += grand;
 
         html += `
             <tr>
                 <td>Total sales in ${month} '${String(selectedYear).slice(-2)}</td>
-                <td class="number">${formatPlain(value)}</td>
+                <td class="number">${formatPlain(m.total)}</td>
+                <td class="number">${formatPlain(m.commission)}</td>
+                <td class="number">${formatPlain(m.net)}</td>
+                <td class="number">${formatPlain(m.offline)}</td>
+                <td class="number">${formatPlain(grand)}</td>
+                <td class="number">${formatPlain(diff)}</td>
             </tr>
         `;
     });
@@ -528,7 +569,12 @@ function renderYearlyTable(selectedYear) {
     html += `
             <tr class="total-row">
                 <td>Total</td>
-                <td class="number">${formatPlain(grandTotal)}</td>
+                <td class="number">${formatPlain(totalSalesAll)}</td>
+                <td class="number">${formatPlain(totalCommissionAll)}</td>
+                <td class="number">${formatPlain(totalNetAll)}</td>
+                <td class="number">${formatPlain(totalOfflineAll)}</td>
+                <td class="number">${formatPlain(grandTotalAll)}</td>
+                <td></td>
             </tr>
                 </tbody>
             </table>

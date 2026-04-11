@@ -55,14 +55,15 @@ ZOHO.CREATOR.init().then(function() {
 
     ZOHO.CREATOR.API.getAllRecords({
         appName: "wellbeing_nutrition",
-        reportName: "Sales_Summary_Report"   // ⚠️ CHANGE THIS
+        reportName: "Sales_Summary_Report"
     }).then(function(response) {
-
-        console.log(response);
-
+        console.log("SUCCESS:", response);
         document.getElementById("content").innerHTML =
             "Total Records: " + response.data.length;
-
+    }).catch(function(error) {
+        console.log("ERROR:", error);
+        document.getElementById("content").innerHTML =
+            "Error: " + JSON.stringify(error);
     });
 
 });

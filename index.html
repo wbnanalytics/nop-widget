@@ -30,11 +30,13 @@
             font-size: 14px;
         }
         .filters-wrap {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(120px, 1fr));
+            display: flex;
+            flex-wrap: nowrap;     /* ❗ prevents line break */
             gap: 12px;
             margin-bottom: 24px;
+            overflow-x: auto;      /* enables scroll if needed */
         }
+        
         select, input[type="date"] {
             width: 100%;
             padding: 10px 12px;
@@ -118,7 +120,7 @@
 <body>
     <div class="dashboard-card">
         <h2>🚀 NOP Dashboard</h2>
-        <p class="subtitle">v1</p>
+        <p class="subtitle">v2</p>
 
         <div class="filters-wrap">
             <select id="typeFilter" onchange="applyFilters()"></select>

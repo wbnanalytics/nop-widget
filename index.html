@@ -45,6 +45,23 @@
             font-size: 14px;
             background: #fff;
         }
+
+        .action-btn {
+            padding: 10px 16px;
+            border: 1px solid #cfd8e6;
+            border-radius: 10px;
+            background: #ffffff;
+            color: #215c78;
+            font-size: 14px;
+            font-family: "Courier New", monospace;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .action-btn:hover {
+            background: #eef7fb;
+        }
         .cards {
             display: grid;
             grid-template-columns: repeat(4, minmax(220px, 1fr));
@@ -130,6 +147,8 @@
             <select id="weekFilter" onchange="applyFilters()"></select>
             <input type="date" id="dateFilter" onchange="applyFilters()" />
             <select id="nutritionistFilter" onchange="applyFilters()"></select>
+            <button type="button" class="action-btn" onclick="refreshDashboard()">Refresh</button>
+            <button type="button" class="action-btn" onclick="exportDashboardCSV()">Export</button>
         </div>
 
         <div class="cards">
@@ -618,7 +637,7 @@ function renderYearlyTable(selectedYear) {
 
         html += `
             <tr>
-                <td>Total sales in ${month} '${String(selectedYear).slice(-2)}</td>
+                <td>${month} '${String(selectedYear).slice(-2)}</td>
                 <td class="number">${formatPlain(m.total)}</td>
                 <td class="number">${formatPlain(m.commission)}</td>
                 <td class="number">${formatPlain(m.net)}</td>
@@ -661,6 +680,89 @@ async function initDashboard() {
         document.getElementById("nutritionistSummary").innerHTML = `<div class="empty">Error loading dashboard.</div>`;
         document.getElementById("expertYearlyTable").innerHTML = "";
     }
+}
+
+async function refreshDashboard() {
+    document.getElementById("nutritionistSummary").innerHTML = `<div class="loading">Refreshing summary...</div>`;
+    document.getElementById("expertYearlyTable").innerHTML = `<div class="loading">Refreshing yearly table...</div>`;
+
+    allData = await fetchAllRecords();
+    populateFilters();
+    applyFilters();
+    renderYearlyTableFromYearFilter();
+}
+
+function exportDashboardCSV() {
+    const type = document.getElementById("typeFilter").value.trim().toLowerCase();
+    const year = document.getElementById("yearFilter").value;
+    const month = document.getElementById("monthFilter").value;
+    const week = document.getElementById("weekFilter").value;
+    const date = document.getElementById("dateFilter").value;
+    const nutritionist = document.getElementById("nutritionistFilter").value;
+
+    const filtered = allData.filter(row => {
+        const rowType = getType(row).trim().toLowerCase();
+        const rowYear = getYear(row);
+
+        let rowMonth = getMonth(row);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0,3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        const rowWeek = getWeek(row);
+        const rowDate = getISODate(row);
+        const rowNutritionist = getNutritionist(row).trim();
+
+        return (!type || rowType === type) &&
+               (!year || rowYear === year) &&
+               (!month || rowMonth === month) &&
+               (!week || rowWeek === week) &&
+               (!date || rowDate === date) &&
+               (!nutritionist || rowNutritionist === nutritionist);
+    });
+
+    let csv = [
+        ["Type","Year","Month","Week","Date","Nutritionist","Total Amount","Commission","Net Sales","Offline Sales","Grand Total"]
+    ];
+
+    filtered.forEach(row => {
+        const rowType = getType(row);
+        const rowYear = getYear(row);
+        const rowMonth = getMonth(row);
+        const rowWeek = getWeek(row);
+        const rowDate = getISODate(row);
+        const rowNutritionist = getNutritionist(row);
+        const total = getTotalSales(row);
+        const commission = getCommission(row);
+        const net = rowType.toLowerCase() === "offline" ? 0 : (total - commission);
+        const offline = rowType.toLowerCase() === "offline" ? total : 0;
+        const grand = net + offline;
+
+        csv.push([
+            rowType,
+            rowYear,
+            rowMonth,
+            rowWeek,
+            rowDate,
+            rowNutritionist,
+            total,
+            commission,
+            net,
+            offline,
+            grand
+        ]);
+    });
+
+    const csvContent = csv.map(r =>
+        r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "nop_dashboard_export.csv";
+    link.click();
 }
 
 initDashboard();

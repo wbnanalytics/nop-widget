@@ -2,35 +2,15 @@
 <html>
 <head>
     <title>NOP Dashboard</title>
-
-    <script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
-
+    <script src="https://static.zohocdn.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
     <style>
-        body {
-            font-family: Arial;
-            padding: 20px;
-        }
-
-        .card {
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-        }
-
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        select {
-            padding: 5px;
-        }
+        body { font-family: Arial; padding: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 10px; }
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        select { padding: 5px; }
     </style>
 </head>
-
 <body>
-
 <div class="card">
     <h2>🚀 NOP Dashboard</h2>
 
@@ -44,30 +24,23 @@
     </div>
 
     <div id="content">
-        <p>Data will load here...</p>
+        <p>Loading...</p>
     </div>
 </div>
 
 <script>
-ZOHO.CREATOR.init().then(function() {
-
-    console.log("Widget Loaded");
-
-    ZOHO.CREATOR.API.getAllRecords({
-        appName: "wellbeing_nutrition",
-        reportName: "Sales_Summary_Report"
-    }).then(function(response) {
-        console.log("SUCCESS:", response);
-        document.getElementById("content").innerHTML =
-            "Total Records: " + response.data.length;
-    }).catch(function(error) {
-        console.log("ERROR:", error);
-        document.getElementById("content").innerHTML =
-            "Error: " + JSON.stringify(error);
-    });
-
+ZOHO.CREATOR.DATA.getRecords({
+    app_name: "nop-sales-summary",
+    report_name: "Sales_Summary_Report"
+}).then(function(response) {
+    console.log("SUCCESS:", response);
+    document.getElementById("content").innerHTML =
+        "Total Records: " + (response.data ? response.data.length : 0);
+}).catch(function(error) {
+    console.log("ERROR:", error);
+    document.getElementById("content").innerHTML =
+        "Error: " + JSON.stringify(error);
 });
 </script>
-
 </body>
 </html>

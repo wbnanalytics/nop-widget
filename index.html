@@ -118,7 +118,7 @@
 <body>
     <div class="dashboard-card">
         <h2>🚀 NOP Dashboard</h2>
-        <p class="subtitle">varunn</p>
+        <p class="subtitle">varu</p>
 
         <div class="filters-wrap">
             <select id="typeFilter" onchange="applyFilters()"></select>
@@ -443,7 +443,6 @@ function renderNutritionistSummary(data) {
                     <thead>
                         <tr>
                             <th>Nutritionist</th>
-                            <th class="number">Total Sales</th>
                             <th class="number">Total Net Sales</th>
                             <th class="number">Total Offline Sales</th>
                             <th class="number">Grand Total</th>
@@ -466,7 +465,6 @@ function renderNutritionistSummary(data) {
         html += `
             <tr>
                 <td>${escapeHtml(name)}</td>
-                <td class="number">${formatCurrency(sales)}</td>
                 <td class="number">${formatCurrency(net)}</td>
                 <td class="number">${formatCurrency(offline)}</td>
                 <td class="number">${formatCurrency(grand)}</td>
@@ -477,7 +475,6 @@ function renderNutritionistSummary(data) {
     html += `
             <tr class="total-row">
                 <td>Total</td>
-                <td class="number">${formatCurrency(grandSales)}</td>
                 <td class="number">${formatCurrency(grandNet)}</td>
                 <td class="number">${formatCurrency(grandOffline)}</td>
                 <td class="number">${formatCurrency(grandTotal)}</td>
@@ -526,13 +523,14 @@ function renderYearlyTable(selectedYear) {
         if (!month || !monthly[month]) return;
 
         const total = getTotalSales(row);
-        const net = getNetSales(row);
         const type = getType(row).toLowerCase();
-        const commission = total - net;
+        const commission = getCommission(row);
 
         if (type === "offline") {
             monthly[month].offline += total;
         } else {
+            const net = total - commission;
+
             monthly[month].total += total;
             monthly[month].net += net;
             monthly[month].commission += commission;

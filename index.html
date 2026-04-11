@@ -49,9 +49,23 @@
 </div>
 
 <script>
-    ZOHO.CREATOR.init().then(function() {
-        console.log("Widget Loaded");
+ZOHO.CREATOR.init().then(function() {
+
+    console.log("Widget Loaded");
+
+    ZOHO.CREATOR.API.getAllRecords({
+        appName: "wellbeing_nutrition",
+        reportName: "NOP Dashboard"   // ⚠️ CHANGE THIS
+    }).then(function(response) {
+
+        console.log(response);
+
+        document.getElementById("content").innerHTML =
+            "Total Records: " + response.data.length;
+
     });
+
+});
 </script>
 
 </body>

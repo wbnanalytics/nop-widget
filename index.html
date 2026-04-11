@@ -4,193 +4,121 @@
     <title>NOP Dashboard</title>
     <script src="https://static.zohocdn.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 18px;
             font-family: Arial, sans-serif;
-            background: transparent;
             color: #24324a;
+            background: transparent;
         }
-
         .dashboard-card {
-            background: #ffffff;
+            background: #fff;
+            border: 1px solid #e7edf6;
             border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 2px 10px rgba(25, 42, 70, 0.06);
-            border: 1px solid #e8edf5;
+            box-shadow: 0 2px 10px rgba(25,42,70,0.06);
         }
-
-        .header-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 18px;
-        }
-
-        .title-block h2 {
-            margin: 0;
-            font-size: 34px;
-            line-height: 1.1;
+        h2 {
+            margin: 0 0 8px;
+            font-size: 32px;
             color: #14233c;
         }
-
-        .title-block p {
-            margin: 8px 0 0;
-            color: #66758f;
+        .subtitle {
+            margin: 0 0 20px;
+            color: #6b7a91;
             font-size: 14px;
         }
-
         .filters-wrap {
             display: grid;
             grid-template-columns: repeat(6, minmax(120px, 1fr));
             gap: 12px;
-            margin: 22px 0 26px;
+            margin-bottom: 24px;
         }
-
-        select,
-        input[type="date"] {
+        select, input[type="date"] {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #cfd8e6;
             border-radius: 10px;
-            background: #fff;
-            color: #23324a;
             font-size: 14px;
-            outline: none;
+            background: #fff;
         }
-
-        select:focus,
-        input[type="date"]:focus {
-            border-color: #5b7cff;
-            box-shadow: 0 0 0 3px rgba(91, 124, 255, 0.12);
-        }
-
-        .section {
-            margin-top: 24px;
-        }
-
-        .section h3 {
-            margin: 0 0 14px;
-            font-size: 20px;
-            color: #14233c;
-        }
-
-        .summary-cards {
+        .cards {
             display: grid;
-            grid-template-columns: repeat(3, minmax(180px, 1fr));
+            grid-template-columns: repeat(2, minmax(220px, 1fr));
             gap: 14px;
-            margin-bottom: 18px;
+            margin-bottom: 22px;
         }
-
         .mini-card {
             background: linear-gradient(180deg, #f8fbff 0%, #f3f7ff 100%);
             border: 1px solid #e3eaf6;
             border-radius: 14px;
             padding: 16px;
         }
-
         .mini-card .label {
-            font-size: 13px;
             color: #6b7a91;
+            font-size: 13px;
             margin-bottom: 8px;
         }
-
         .mini-card .value {
+            color: #162742;
             font-size: 26px;
             font-weight: 700;
-            color: #162742;
         }
-
+        .section { margin-top: 20px; }
+        .section h3 {
+            margin: 0 0 12px;
+            font-size: 20px;
+            color: #14233c;
+        }
         .table-wrap {
-            width: 100%;
             overflow-x: auto;
             border: 1px solid #e3eaf6;
             border-radius: 14px;
             background: #fff;
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 900px;
+            min-width: 980px;
         }
-
         th {
             background: #eef4ff;
             color: #294160;
-            font-weight: 700;
             font-size: 14px;
-            padding: 12px 10px;
+            font-weight: 700;
             text-align: left;
+            padding: 12px 10px;
             border-bottom: 1px solid #dde6f3;
         }
-
         td {
             padding: 11px 10px;
             font-size: 14px;
-            border-bottom: 1px solid #edf2f8;
             color: #24324a;
+            border-bottom: 1px solid #edf2f8;
         }
-
-        td.number,
-        th.number {
-            text-align: right;
-            white-space: nowrap;
-        }
-
+        th.number, td.number { text-align: right; white-space: nowrap; }
         tr.total-row td {
             font-weight: 700;
             background: #fff9d8;
         }
-
-        .muted {
+        .empty, .loading {
             color: #6d7c92;
             font-size: 14px;
+            padding: 14px 0;
         }
-
-        .loading {
-            padding: 18px 0;
-            color: #6d7c92;
-            font-size: 14px;
-        }
-
-        .empty {
-            padding: 16px 0;
-            color: #6d7c92;
-            font-size: 14px;
-        }
-
         @media (max-width: 1200px) {
-            .filters-wrap {
-                grid-template-columns: repeat(3, minmax(120px, 1fr));
-            }
+            .filters-wrap { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
         }
-
         @media (max-width: 700px) {
-            .filters-wrap,
-            .summary-cards {
-                grid-template-columns: 1fr;
-            }
-
-            .title-block h2 {
-                font-size: 28px;
-            }
+            .filters-wrap, .cards { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="dashboard-card">
-        <div class="header-row">
-            <div class="title-block">
-                <h2>🚀 NOP Dashboard</h2>
-                <p>Formal one-page summary view for nutritionist and yearly expert reporting.</p>
-            </div>
-        </div>
+        <h2>🚀 NOP Dashboard</h2>
+        <p class="subtitle">One-page summary view with filters, nutritionist totals, and yearly month-wise expert table.</p>
 
         <div class="filters-wrap">
             <select id="typeFilter" onchange="applyFilters()"></select>
@@ -201,7 +129,7 @@
             <select id="nutritionistFilter" onchange="applyFilters()"></select>
         </div>
 
-        <div class="summary-cards" id="topCards">
+        <div class="cards">
             <div class="mini-card">
                 <div class="label">Filtered Total Sales</div>
                 <div class="value" id="cardTotalSales">₹ 0.00</div>
@@ -209,10 +137,6 @@
             <div class="mini-card">
                 <div class="label">Filtered Total Net Sales</div>
                 <div class="value" id="cardTotalNetSales">₹ 0.00</div>
-            </div>
-            <div class="mini-card">
-                <div class="label">Selected Data Year</div>
-                <div class="value" id="cardYear">-</div>
             </div>
         </div>
 
@@ -231,42 +155,29 @@
         let allData = [];
 
         const monthOrder = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
+            "January","February","March","April","May","June",
+            "July","August","September","October","November","December"
         ];
 
-        const monthMap = {
-            Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-            Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+        const monthMapShort = {
+            jan:0, feb:1, mar:2, apr:3, may:4, jun:5,
+            jul:6, aug:7, sep:8, oct:9, nov:10, dec:11
         };
 
-        async function fetchAllRecords() {
-            let merged = [];
-            let cursor = null;
+        function norm(str) {
+            return String(str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        }
 
-            while (true) {
-                const config = {
-                    app_name: "nop-sales-summary",
-                    report_name: "Sales_Summary_Report",
-                    max_records: 1000
-                };
-
-                if (cursor) {
-                    config.record_cursor = cursor;
-                }
-
-                const response = await ZOHO.CREATOR.DATA.getRecords(config);
-                const rows = response.data || [];
-                merged = merged.concat(rows);
-
-                if (response.record_cursor) {
-                    cursor = response.record_cursor;
-                } else {
-                    break;
+        function getField(row, candidates) {
+            const keys = Object.keys(row || {});
+            for (const c of candidates) {
+                const target = norm(c);
+                const found = keys.find(k => norm(k) === target);
+                if (found && row[found] !== undefined && row[found] !== null && row[found] !== "") {
+                    return row[found];
                 }
             }
-
-            return merged;
+            return "";
         }
 
         function getNumber(val) {
@@ -302,44 +213,98 @@
 
             const str = String(value).trim();
 
-            const isoDate = new Date(str);
-            if (!isNaN(isoDate.getTime())) return isoDate;
+            const iso = new Date(str);
+            if (!isNaN(iso.getTime())) return iso;
 
             const parts = str.split("-");
             if (parts.length === 3) {
                 const day = parseInt(parts[0], 10);
-                const monthText = parts[1];
+                const mon = String(parts[1]).slice(0,3).toLowerCase();
                 const year = parseInt(parts[2], 10);
-
-                if (!isNaN(day) && !isNaN(year) && monthMap.hasOwnProperty(monthText)) {
-                    return new Date(year, monthMap[monthText], day);
+                if (!isNaN(day) && !isNaN(year) && monthMapShort.hasOwnProperty(mon)) {
+                    return new Date(year, monthMapShort[mon], day);
                 }
             }
 
             return null;
         }
 
-        function getYearFromRow(row) {
-            const d = parseDate(row.DOS);
+        function getType(row) {
+            return String(getField(row, ["Type"])).trim();
+        }
+
+        function getNutritionist(row) {
+            return String(getField(row, ["Assigned Nutritionist", "Assigned_Nutritionist", "Nutritionist"])).trim();
+        }
+
+        function getDOS(row) {
+            return parseDate(getField(row, ["DOS", "Date", "Order Date"]));
+        }
+
+        function getYear(row) {
+            const d = getDOS(row);
             return d ? String(d.getFullYear()) : "";
         }
 
-        function getWeekLabel(row) {
-            const d = parseDate(row.DOS);
-            if (!d) return "";
+        function getMonth(row) {
+            const m = String(getField(row, ["Month"])).trim();
+            if (m) return m;
+            const d = getDOS(row);
+            return d ? monthOrder[d.getMonth()] : "";
+        }
 
+        function getWeek(row) {
+            const d = getDOS(row);
+            if (!d) return "";
             const day = d.getDate();
-            if (day >= 1 && day <= 7) return "Week1";
-            if (day >= 8 && day <= 14) return "Week2";
-            if (day >= 15 && day <= 21) return "Week3";
-            if (day >= 22 && day <= 28) return "Week4";
+            if (day <= 7) return "Week1";
+            if (day <= 14) return "Week2";
+            if (day <= 21) return "Week3";
+            if (day <= 28) return "Week4";
             return "Week5";
         }
 
-        function getISODateFromRow(row) {
-            const d = parseDate(row.DOS);
-            if (!d) return "";
-            return d.toISOString().split("T")[0];
+        function getISODate(row) {
+            const d = getDOS(row);
+            return d ? d.toISOString().split("T")[0] : "";
+        }
+
+        function getTotalSales(row) {
+            return getNumber(getField(row, ["Total Amount", "Total_Amount", "Total Sales", "Total_Sales"]));
+        }
+
+        function getNetSales(row) {
+            return getNumber(getField(row, ["Actual Amount", "Actual_Amount", "Total Net", "Total Net Sales", "Net Sales", "Total_Net_Sales"]));
+        }
+
+        function getCommission(row) {
+            return getNumber(getField(row, ["Commission", "Total Commission", "Total_Commission"]));
+        }
+
+        async function fetchAllRecords() {
+            let merged = [];
+            let cursor = null;
+
+            while (true) {
+                const config = {
+                    app_name: "nop-sales-summary",
+                    report_name: "Sales_Summary_Report",
+                    max_records: 1000
+                };
+
+                if (cursor) config.record_cursor = cursor;
+
+                const res = await ZOHO.CREATOR.DATA.getRecords(config);
+                merged = merged.concat(res.data || []);
+
+                if (res.record_cursor) {
+                    cursor = res.record_cursor;
+                } else {
+                    break;
+                }
+            }
+
+            return merged;
         }
 
         function fillDropdown(id, values, label) {
@@ -351,15 +316,15 @@
         }
 
         function populateFilters() {
-            const types = [...new Set(allData.map(r => r.Type).filter(Boolean))].sort();
-            const years = [...new Set(allData.map(r => getYearFromRow(r)).filter(Boolean))].sort();
-            const months = monthOrder.filter(m => allData.some(r => r.Month === m));
-            const nutritionists = [...new Set(allData.map(r => r.Assigned_Nutritionist).filter(Boolean))].sort();
+            const types = [...new Set(allData.map(getType).filter(Boolean))].sort();
+            const years = [...new Set(allData.map(getYear).filter(Boolean))].sort();
+            const months = monthOrder.filter(m => allData.some(r => getMonth(r) === m));
+            const nutritionists = [...new Set(allData.map(getNutritionist).filter(Boolean))].sort();
 
             fillDropdown("typeFilter", types, "Type");
             fillDropdown("yearFilter", years, "Year");
             fillDropdown("monthFilter", months, "Month");
-            fillDropdown("weekFilter", ["Week1", "Week2", "Week3", "Week4", "Week5"], "Week");
+            fillDropdown("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "Week");
             fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
 
             if (years.length) {
@@ -376,50 +341,41 @@
             const nutritionist = document.getElementById("nutritionistFilter").value;
 
             const filtered = allData.filter(row => {
-                return (!type || row.Type === type) &&
-                       (!year || getYearFromRow(row) === year) &&
-                       (!month || row.Month === month) &&
-                       (!week || getWeekLabel(row) === week) &&
-                       (!date || getISODateFromRow(row) === date) &&
-                       (!nutritionist || row.Assigned_Nutritionist === nutritionist);
+                return (!type || getType(row) === type) &&
+                       (!year || getYear(row) === year) &&
+                       (!month || getMonth(row) === month) &&
+                       (!week || getWeek(row) === week) &&
+                       (!date || getISODate(row) === date) &&
+                       (!nutritionist || getNutritionist(row) === nutritionist);
             });
 
-            renderTopCards(filtered, year);
+            renderTopCards(filtered);
             renderNutritionistSummary(filtered);
             renderYearlyTable(filtered, year);
         }
 
-        function renderTopCards(data, selectedYear) {
+        function renderTopCards(data) {
             let totalSales = 0;
             let totalNetSales = 0;
 
             data.forEach(row => {
-                totalSales += getNumber(row.Total_Amount);
-                totalNetSales += getNumber(row.Actual_Amount);
+                totalSales += getTotalSales(row);
+                totalNetSales += getNetSales(row);
             });
 
             document.getElementById("cardTotalSales").innerText = formatCurrency(totalSales);
             document.getElementById("cardTotalNetSales").innerText = formatCurrency(totalNetSales);
-            document.getElementById("cardYear").innerText = selectedYear || "-";
         }
 
         function renderNutritionistSummary(data) {
             const container = document.getElementById("nutritionistSummary");
-
             const grouped = {};
 
             data.forEach(row => {
-                const name = row.Assigned_Nutritionist || "Unassigned";
-
-                if (!grouped[name]) {
-                    grouped[name] = {
-                        sales: 0,
-                        netSales: 0
-                    };
-                }
-
-                grouped[name].sales += getNumber(row.Total_Amount);
-                grouped[name].netSales += getNumber(row.Actual_Amount);
+                const name = getNutritionist(row) || "Unassigned";
+                if (!grouped[name]) grouped[name] = { sales: 0, net: 0 };
+                grouped[name].sales += getTotalSales(row);
+                grouped[name].net += getNetSales(row);
             });
 
             const names = Object.keys(grouped).sort();
@@ -429,8 +385,8 @@
                 return;
             }
 
-            let totalSales = 0;
-            let totalNet = 0;
+            let grandSales = 0;
+            let grandNet = 0;
 
             let html = `
                 <div class="table-wrap">
@@ -447,9 +403,9 @@
 
             names.forEach(name => {
                 const sales = grouped[name].sales;
-                const net = grouped[name].netSales;
-                totalSales += sales;
-                totalNet += net;
+                const net = grouped[name].net;
+                grandSales += sales;
+                grandNet += net;
 
                 html += `
                     <tr>
@@ -463,8 +419,8 @@
             html += `
                     <tr class="total-row">
                         <td>Total</td>
-                        <td class="number">${formatCurrency(totalSales)}</td>
-                        <td class="number">${formatCurrency(totalNet)}</td>
+                        <td class="number">${formatCurrency(grandSales)}</td>
+                        <td class="number">${formatCurrency(grandNet)}</td>
                     </tr>
                         </tbody>
                     </table>
@@ -483,11 +439,11 @@
                 return;
             }
 
-            const yearData = data.filter(row => getYearFromRow(row) === yearToUse);
+            const yearData = data.filter(row => getYear(row) === yearToUse);
 
             const monthly = {};
-            monthOrder.forEach(month => {
-                monthly[month] = {
+            monthOrder.forEach(m => {
+                monthly[m] = {
                     onlineSale: 0,
                     commission: 0,
                     netSales: 0,
@@ -497,28 +453,28 @@
             });
 
             yearData.forEach(row => {
-                const month = row.Month;
+                const month = getMonth(row);
                 if (!month || !monthly[month]) return;
 
-                const type = String(row.Type || "").toLowerCase();
-                const totalAmount = getNumber(row.Total_Amount);
-                const actualAmount = getNumber(row.Actual_Amount);
-                const commission = getNumber(row.Commission);
+                const type = getType(row).toLowerCase();
+                const total = getTotalSales(row);
+                const net = getNetSales(row);
+                const comm = getCommission(row);
 
                 if (type === "online") {
-                    monthly[month].onlineSale += totalAmount;
-                    monthly[month].commission += commission;
-                    monthly[month].netSales += actualAmount;
+                    monthly[month].onlineSale += total;
+                    monthly[month].commission += comm;
+                    monthly[month].netSales += net;
                 } else if (type === "offline") {
-                    monthly[month].offlineSale += totalAmount;
+                    monthly[month].offlineSale += total;
                 }
             });
 
             let totalOnline = 0;
-            let totalCommission = 0;
+            let totalComm = 0;
             let totalNet = 0;
             let totalOffline = 0;
-            let prevGrandTotal = null;
+            let prevGrand = null;
 
             let html = `
                 <div class="table-wrap">
@@ -538,25 +494,25 @@
             `;
 
             monthOrder.forEach(month => {
-                const row = monthly[month];
-                row.grandTotal = row.netSales + row.offlineSale;
+                const r = monthly[month];
+                r.grandTotal = r.netSales + r.offlineSale;
 
-                const diff = prevGrandTotal === null ? 0 : row.grandTotal - prevGrandTotal;
-                prevGrandTotal = row.grandTotal;
+                const diff = prevGrand === null ? 0 : r.grandTotal - prevGrand;
+                prevGrand = r.grandTotal;
 
-                totalOnline += row.onlineSale;
-                totalCommission += row.commission;
-                totalNet += row.netSales;
-                totalOffline += row.offlineSale;
+                totalOnline += r.onlineSale;
+                totalComm += r.commission;
+                totalNet += r.netSales;
+                totalOffline += r.offlineSale;
 
                 html += `
                     <tr>
                         <td>Total sales in ${month} '${String(yearToUse).slice(-2)}</td>
-                        <td class="number">${formatPlain(row.onlineSale)}</td>
-                        <td class="number">${formatPlain(row.commission)}</td>
-                        <td class="number">${formatPlain(row.netSales)}</td>
-                        <td class="number">${formatPlain(row.offlineSale)}</td>
-                        <td class="number">${formatPlain(row.grandTotal)}</td>
+                        <td class="number">${formatPlain(r.onlineSale)}</td>
+                        <td class="number">${formatPlain(r.commission)}</td>
+                        <td class="number">${formatPlain(r.netSales)}</td>
+                        <td class="number">${formatPlain(r.offlineSale)}</td>
+                        <td class="number">${formatPlain(r.grandTotal)}</td>
                         <td class="number">${formatPlain(diff)}</td>
                     </tr>
                 `;
@@ -566,7 +522,7 @@
                     <tr class="total-row">
                         <td>Total</td>
                         <td class="number">${formatPlain(totalOnline)}</td>
-                        <td class="number">${formatPlain(totalCommission)}</td>
+                        <td class="number">${formatPlain(totalComm)}</td>
                         <td class="number">${formatPlain(totalNet)}</td>
                         <td class="number">${formatPlain(totalOffline)}</td>
                         <td class="number">${formatPlain(totalNet + totalOffline)}</td>
@@ -586,12 +542,14 @@
                 document.getElementById("expertYearlyTable").innerHTML = `<div class="loading">Loading yearly table...</div>`;
 
                 allData = await fetchAllRecords();
+                console.log("TOTAL FETCHED:", allData.length);
+                console.log("SAMPLE ROW:", allData[0]);
+
                 populateFilters();
                 applyFilters();
             } catch (error) {
-                console.log(error);
-                document.getElementById("nutritionistSummary").innerHTML =
-                    `<div class="empty">Error loading dashboard: ${escapeHtml(JSON.stringify(error))}</div>`;
+                console.log("ERROR:", error);
+                document.getElementById("nutritionistSummary").innerHTML = `<div class="empty">Error loading dashboard.</div>`;
                 document.getElementById("expertYearlyTable").innerHTML = "";
             }
         }

@@ -234,7 +234,21 @@ function parseDate(value) {
 }
 
 function getType(row) {
-    return String(getField(row, ["Type"])).trim();
+    let value = getField(row, ["Type", "Order Type", "Sale Type"]);
+
+    if (value) return String(value).trim();
+
+    const keys = Object.keys(row || {});
+    const foundKey = keys.find(k => {
+        const n = norm(k);
+        return n === "type" || n.includes("type");
+    });
+
+    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+        return String(row[foundKey]).trim();
+    }
+
+    return "";
 }
 
 function getNutritionist(row) {

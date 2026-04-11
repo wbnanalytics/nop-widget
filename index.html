@@ -490,7 +490,7 @@ function renderNutritionistSummary(data) {
 
     let html = `
             <div class="table-wrap">
-                <table>
+                <table id="nutritionistSummaryTable">
                     <thead>
                         <tr>
                             <th>Nutritionist</th>
@@ -601,7 +601,7 @@ function renderYearlyTable(selectedYear) {
 
     let html = `
         <div class="table-wrap">
-            <table>
+            <table id="yearlySalesTable">
                 <thead>
                     <tr>
                         <th>Months</th>
@@ -692,77 +692,137 @@ async function refreshDashboard() {
     renderYearlyTableFromYearFilter();
 }
 
-function exportDashboardCSV() {
-    const type = document.getElementById("typeFilter").value.trim().toLowerCase();
-    const year = document.getElementById("yearFilter").value;
-    const month = document.getElementById("monthFilter").value;
-    const week = document.getElementById("weekFilter").value;
-    const date = document.getElementById("dateFilter").value;
-    const nutritionist = document.getElementById("nutritionistFilter").value;
+function convertTableForExcel(table) {
+    const cloned = table.cloneNode(true);
 
-    const filtered = allData.filter(row => {
-        const rowType = getType(row).trim().toLowerCase();
-        const rowYear = getYear(row);
+    cloned.classList.add("report");
 
-        let rowMonth = getMonth(row);
-        if (rowMonth) {
-            const x = rowMonth.toLowerCase().slice(0,3);
-            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
-        }
-
-        const rowWeek = getWeek(row);
-        const rowDate = getISODate(row);
-        const rowNutritionist = getNutritionist(row).trim();
-
-        return (!type || rowType === type) &&
-               (!year || rowYear === year) &&
-               (!month || rowMonth === month) &&
-               (!week || rowWeek === week) &&
-               (!date || rowDate === date) &&
-               (!nutritionist || rowNutritionist === nutritionist);
+    cloned.querySelectorAll("th.number, td.number").forEach(el => {
+        el.classList.remove("number");
+        el.classList.add("num");
     });
 
-    let csv = [
-        ["Type","Year","Month","Week","Date","Nutritionist","Total Amount","Commission","Net Sales","Offline Sales","Grand Total"]
-    ];
-
-    filtered.forEach(row => {
-        const rowType = getType(row);
-        const rowYear = getYear(row);
-        const rowMonth = getMonth(row);
-        const rowWeek = getWeek(row);
-        const rowDate = getISODate(row);
-        const rowNutritionist = getNutritionist(row);
-        const total = getTotalSales(row);
-        const commission = getCommission(row);
-        const net = rowType.toLowerCase() === "offline" ? 0 : (total - commission);
-        const offline = rowType.toLowerCase() === "offline" ? total : 0;
-        const grand = net + offline;
-
-        csv.push([
-            rowType,
-            rowYear,
-            rowMonth,
-            rowWeek,
-            rowDate,
-            rowNutritionist,
-            total,
-            commission,
-            net,
-            offline,
-            grand
-        ]);
+    cloned.querySelectorAll("tr.total-row").forEach(tr => {
+        tr.classList.add("total-row");
     });
 
-    const csvContent = csv.map(r =>
-        r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")
-    ).join("\n");
+    return cloned.outerHTML;
+}
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+function exportDashboardReport() {
+    const nutritionTable = document.getElementById("nutritionistSummaryTable");
+    const yearlyTable = document.getElementById("yearlySalesTable");
+
+    if (!nutritionTable || !yearlyTable) {
+        alert("Tables not ready for export.");
+        return;
+    }
+
+    const typeText = document.getElementById("typeFilter").selectedOptions[0]?.text || "All Type";
+    const yearText = document.getElementById("yearFilter").selectedOptions[0]?.text || "All Year";
+    const monthText = document.getElementById("monthFilter").selectedOptions[0]?.text || "All Month";
+    const weekText = document.getElementById("weekFilter").selectedOptions[0]?.text || "All Week";
+    const dateText = document.getElementById("dateFilter").value || "All Date";
+    const nutritionistText = document.getElementById("nutritionistFilter").selectedOptions[0]?.text || "All Nutritionist";
+
+    const totalSales = document.getElementById("cardTotalSales").innerText;
+    const totalNetSales = document.getElementById("cardTotalNetSales").innerText;
+    const totalOfflineSales = document.getElementById("cardTotalOfflineSales").innerText;
+    const grandTotal = document.getElementById("cardGrandTotal").innerText;
+
+    const html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:x="urn:schemas-microsoft-com:office:excel"
+          xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="ProgId" content="Excel.Sheet">
+        <meta name="Generator" content="Microsoft Excel">
+        <style>
+            body {
+                font-family: Calibri, Arial, sans-serif;
+                padding: 20px;
+                color: #1f1f1f;
+            }
+            h2, h3 {
+                margin: 0 0 10px 0;
+            }
+            .filters, .cards {
+                margin-bottom: 18px;
+            }
+            .filters td {
+                padding: 6px 10px;
+                border: 1px solid #d9d9d9;
+            }
+            .cards td {
+                padding: 8px 14px;
+                border: 1px solid #d9d9d9;
+                font-weight: 700;
+            }
+            table.report {
+                border-collapse: collapse;
+                width: 100%;
+                margin-bottom: 24px;
+            }
+            table.report th, table.report td {
+                border: 1px solid #cfe5ee;
+                padding: 10px;
+            }
+            table.report th {
+                background: #dff1f7;
+                color: #215c78;
+                font-weight: 700;
+                text-align: left;
+            }
+            table.report td.num, table.report th.num {
+                text-align: right;
+            }
+            table.report tr.total-row td {
+                background: #f8f1bf;
+                font-weight: 700;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>NOP Dashboard Export</h2>
+
+        <table class="filters">
+            <tr>
+                <td><b>Type</b></td><td>${typeText}</td>
+                <td><b>Year</b></td><td>${yearText}</td>
+                <td><b>Month</b></td><td>${monthText}</td>
+            </tr>
+            <tr>
+                <td><b>Week</b></td><td>${weekText}</td>
+                <td><b>Date</b></td><td>${dateText}</td>
+                <td><b>Nutritionist</b></td><td>${nutritionistText}</td>
+            </tr>
+        </table>
+
+        <table class="cards">
+            <tr>
+                <td>Total Sales</td><td>${totalSales}</td>
+                <td>Total Net Sales</td><td>${totalNetSales}</td>
+                <td>Total Offline Sales</td><td>${totalOfflineSales}</td>
+                <td>Grand Total</td><td>${grandTotal}</td>
+            </tr>
+        </table>
+
+        <h3>Nutritionist Summary</h3>
+        ${convertTableForExcel(nutritionTable)}
+
+        <h3>Yearly Sales</h3>
+        ${convertTableForExcel(yearlyTable)}
+    </body>
+    </html>`;
+
+    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "nop_dashboard_export.csv";
+    link.download = "NOP_Dashboard_Report.xls";
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 }
 
 initDashboard();

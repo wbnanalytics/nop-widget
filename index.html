@@ -146,415 +146,381 @@
         </div>
 
         <div class="section">
-            <h3>Yearly Table</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                <h3 style="margin:0;">Yearly Table</h3>
+                <select id="yearlyYearFilter" onchange="renderYearlyTableFromYearFilter()" style="max-width:180px;">
+                </select>
+            </div>
             <div id="expertYearlyTable" class="loading">Loading...</div>
         </div>
     </div>
 
     <script>
-        let allData = [];
+let allData = [];
 
-        const monthOrder = [
-            "January","February","March","April","May","June",
-            "July","August","September","October","November","December"
-        ];
+const monthOrder = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+];
 
-        const monthMapShort = {
-            jan:0, feb:1, mar:2, apr:3, may:4, jun:5,
-            jul:6, aug:7, sep:8, oct:9, nov:10, dec:11
+const monthMapShort = {
+    jan:0, feb:1, mar:2, apr:3, may:4, jun:5,
+    jul:6, aug:7, sep:8, oct:9, nov:10, dec:11
+};
+
+function norm(str) {
+    return String(str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function getField(row, candidates) {
+    const keys = Object.keys(row || {});
+    for (const c of candidates) {
+        const target = norm(c);
+        const found = keys.find(k => norm(k) === target);
+        if (found && row[found] !== undefined && row[found] !== null && row[found] !== "") {
+            return row[found];
+        }
+    }
+    return "";
+}
+
+function getNumber(val) {
+    if (val === null || val === undefined || val === "") return 0;
+    return parseFloat(String(val).replace(/,/g, "")) || 0;
+}
+
+function formatCurrency(num) {
+    return "₹ " + Number(num || 0).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function formatPlain(num) {
+    return Number(num || 0).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function parseDate(value) {
+    if (!value) return null;
+
+    const str = String(value).trim();
+
+    const iso = new Date(str);
+    if (!isNaN(iso.getTime())) return iso;
+
+    const parts = str.split("-");
+    if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const mon = String(parts[1]).slice(0,3).toLowerCase();
+        const year = parseInt(parts[2], 10);
+        if (!isNaN(day) && !isNaN(year) && monthMapShort.hasOwnProperty(mon)) {
+            return new Date(year, monthMapShort[mon], day);
+        }
+    }
+
+    return null;
+}
+
+function getType(row) {
+    return String(getField(row, ["Type"])).trim();
+}
+
+function getNutritionist(row) {
+    return String(getField(row, ["Assigned Nutritionist", "Assigned_Nutritionist", "Nutritionist"])).trim();
+}
+
+function getDOS(row) {
+    return parseDate(getField(row, ["DOS", "Date", "Order Date"]));
+}
+
+function getYear(row) {
+    const d = getDOS(row);
+    return d ? String(d.getFullYear()) : "";
+}
+
+function getMonth(row) {
+    const explicitMonth = String(getField(row, ["Month"])).trim();
+    if (explicitMonth) return explicitMonth;
+
+    const d = getDOS(row);
+    return d ? monthOrder[d.getMonth()] : "";
+}
+
+function getWeek(row) {
+    const d = getDOS(row);
+    if (!d) return "";
+    const day = d.getDate();
+    if (day <= 7) return "Week1";
+    if (day <= 14) return "Week2";
+    if (day <= 21) return "Week3";
+    if (day <= 28) return "Week4";
+    return "Week5";
+}
+
+function getISODate(row) {
+    const d = getDOS(row);
+    return d ? d.toISOString().split("T")[0] : "";
+}
+
+function getTotalSales(row) {
+    return getNumber(getField(row, ["Total Amount", "Total_Amount", "Total Sales", "Total_Sales"]));
+}
+
+function getNetSales(row) {
+    return getNumber(getField(row, ["Actual Amount", "Actual_Amount", "Net Sales", "Total Net Sales", "Total_Net_Sales"]));
+}
+
+async function fetchAllRecords() {
+    let merged = [];
+    let cursor = null;
+
+    while (true) {
+        const config = {
+            app_name: "nop-sales-summary",
+            report_name: "Sales_Summary_Report",
+            max_records: 1000
         };
 
-        function norm(str) {
-            return String(str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (cursor) config.record_cursor = cursor;
+
+        const res = await ZOHO.CREATOR.DATA.getRecords(config);
+        merged = merged.concat(res.data || []);
+
+        if (res.record_cursor) {
+            cursor = res.record_cursor;
+        } else {
+            break;
         }
+    }
 
-        function getField(row, candidates) {
-            const keys = Object.keys(row || {});
-            for (const c of candidates) {
-                const target = norm(c);
-                const found = keys.find(k => norm(k) === target);
-                if (found && row[found] !== undefined && row[found] !== null && row[found] !== "") {
-                    return row[found];
-                }
-            }
-            return "";
-        }
+    return merged;
+}
 
-        function getNumber(val) {
-            if (val === null || val === undefined || val === "") return 0;
-            return parseFloat(String(val).replace(/,/g, "")) || 0;
-        }
+function fillDropdown(id, values, label) {
+    const el = document.getElementById(id);
+    el.innerHTML = `<option value="">All ${label}</option>`;
+    values.forEach(v => {
+        el.innerHTML += `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
+    });
+}
 
-        function formatCurrency(num) {
-            return "₹ " + Number(num || 0).toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
+function populateFilters() {
+    const types = [...new Set(allData.map(getType).filter(Boolean))].sort();
+    const years = [...new Set(allData.map(getYear).filter(Boolean))].sort();
+    const months = monthOrder.filter(m => allData.some(r => getMonth(r) === m));
+    const nutritionists = [...new Set(allData.map(getNutritionist).filter(Boolean))].sort();
 
-        function formatPlain(num) {
-            return Number(num || 0).toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
+    fillDropdown("typeFilter", types, "Type");
+    fillDropdown("yearFilter", years, "Year");
+    fillDropdown("monthFilter", months, "Month");
+    fillDropdown("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "Week");
+    fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
+    fillDropdown("yearlyYearFilter", years, "Year");
 
-        function escapeHtml(str) {
-            return String(str)
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-        }
+    if (years.length) {
+        document.getElementById("yearFilter").value = years[years.length - 1];
+        document.getElementById("yearlyYearFilter").value = years[years.length - 1];
+    }
+}
 
-        function parseDate(value) {
-            if (!value) return null;
+function applyFilters() {
+    const type = document.getElementById("typeFilter").value.trim().toLowerCase();
+    const year = document.getElementById("yearFilter").value;
+    const month = document.getElementById("monthFilter").value;
+    const week = document.getElementById("weekFilter").value;
+    const date = document.getElementById("dateFilter").value;
+    const nutritionist = document.getElementById("nutritionistFilter").value;
 
-            const str = String(value).trim();
+    const filtered = allData.filter(row => {
+        const rowType = getType(row).trim().toLowerCase();
+        const rowYear = getYear(row);
+        const rowMonth = getMonth(row);
+        const rowWeek = getWeek(row);
+        const rowDate = getISODate(row);
+        const rowNutritionist = getNutritionist(row);
 
-            const iso = new Date(str);
-            if (!isNaN(iso.getTime())) return iso;
+        return (!type || rowType === type) &&
+               (!year || rowYear === year) &&
+               (!month || rowMonth === month) &&
+               (!week || rowWeek === week) &&
+               (!date || rowDate === date) &&
+               (!nutritionist || rowNutritionist === nutritionist);
+    });
 
-            const parts = str.split("-");
-            if (parts.length === 3) {
-                const day = parseInt(parts[0], 10);
-                const mon = String(parts[1]).slice(0,3).toLowerCase();
-                const year = parseInt(parts[2], 10);
-                if (!isNaN(day) && !isNaN(year) && monthMapShort.hasOwnProperty(mon)) {
-                    return new Date(year, monthMapShort[mon], day);
-                }
-            }
+    renderTopCards(filtered);
+    renderNutritionistSummary(filtered);
+}
 
-            return null;
-        }
+function renderTopCards(data) {
+    let totalSales = 0;
+    let totalNetSales = 0;
 
-        function getType(row) {
-            return String(getField(row, ["Type"])).trim();
-        }
+    data.forEach(row => {
+        totalSales += getTotalSales(row);
+        totalNetSales += getNetSales(row);
+    });
 
-        function getNutritionist(row) {
-            return String(getField(row, ["Assigned Nutritionist", "Assigned_Nutritionist", "Nutritionist"])).trim();
-        }
+    document.getElementById("cardTotalSales").innerText = formatCurrency(totalSales);
+    document.getElementById("cardTotalNetSales").innerText = formatCurrency(totalNetSales);
+}
 
-        function getDOS(row) {
-            return parseDate(getField(row, ["DOS", "Date", "Order Date"]));
-        }
+function renderNutritionistSummary(data) {
+    const container = document.getElementById("nutritionistSummary");
+    const grouped = {};
 
-        function getYear(row) {
-            const d = getDOS(row);
-            return d ? String(d.getFullYear()) : "";
-        }
+    data.forEach(row => {
+        const name = getNutritionist(row) || "Unassigned";
+        if (!grouped[name]) grouped[name] = { sales: 0, net: 0 };
+        grouped[name].sales += getTotalSales(row);
+        grouped[name].net += getNetSales(row);
+    });
 
-        function getMonth(row) {
-            const m = String(getField(row, ["Month"])).trim();
-            if (m) return m;
-            const d = getDOS(row);
-            return d ? monthOrder[d.getMonth()] : "";
-        }
+    const names = Object.keys(grouped).sort();
 
-        function getWeek(row) {
-            const d = getDOS(row);
-            if (!d) return "";
-            const day = d.getDate();
-            if (day <= 7) return "Week1";
-            if (day <= 14) return "Week2";
-            if (day <= 21) return "Week3";
-            if (day <= 28) return "Week4";
-            return "Week5";
-        }
+    if (!names.length) {
+        container.innerHTML = `<div class="empty">No data found for selected filters.</div>`;
+        return;
+    }
 
-        function getISODate(row) {
-            const d = getDOS(row);
-            return d ? d.toISOString().split("T")[0] : "";
-        }
+    let grandSales = 0;
+    let grandNet = 0;
 
-        function getTotalSales(row) {
-            return getNumber(getField(row, ["Total Amount", "Total_Amount", "Total Sales", "Total_Sales"]));
-        }
-
-        function getNetSales(row) {
-            return getNumber(getField(row, ["Actual Amount", "Actual_Amount", "Total Net", "Total Net Sales", "Net Sales", "Total_Net_Sales"]));
-        }
-
-        function getCommission(row) {
-            return getNumber(getField(row, ["Commission", "Total Commission", "Total_Commission"]));
-        }
-
-        async function fetchAllRecords() {
-            let merged = [];
-            let cursor = null;
-
-            while (true) {
-                const config = {
-                    app_name: "nop-sales-summary",
-                    report_name: "Sales_Summary_Report",
-                    max_records: 1000
-                };
-
-                if (cursor) config.record_cursor = cursor;
-
-                const res = await ZOHO.CREATOR.DATA.getRecords(config);
-                merged = merged.concat(res.data || []);
-
-                if (res.record_cursor) {
-                    cursor = res.record_cursor;
-                } else {
-                    break;
-                }
-            }
-
-            return merged;
-        }
-
-        function fillDropdown(id, values, label) {
-            const el = document.getElementById(id);
-            el.innerHTML = `<option value="">All ${label}</option>`;
-            values.forEach(v => {
-                el.innerHTML += `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
-            });
-        }
-
-        function populateFilters() {
-            const types = [...new Set(allData.map(getType).filter(Boolean))].sort();
-            const years = [...new Set(allData.map(getYear).filter(Boolean))].sort();
-            const months = monthOrder.filter(m => allData.some(r => getMonth(r) === m));
-            const nutritionists = [...new Set(allData.map(getNutritionist).filter(Boolean))].sort();
-
-            fillDropdown("typeFilter", types, "Type");
-            fillDropdown("yearFilter", years, "Year");
-            fillDropdown("monthFilter", months, "Month");
-            fillDropdown("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "Week");
-            fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
-
-            if (years.length) {
-                document.getElementById("yearFilter").value = years[years.length - 1];
-            }
-        }
-
-        function applyFilters() {
-            const type = document.getElementById("typeFilter").value;
-            const year = document.getElementById("yearFilter").value;
-            const month = document.getElementById("monthFilter").value;
-            const week = document.getElementById("weekFilter").value;
-            const date = document.getElementById("dateFilter").value;
-            const nutritionist = document.getElementById("nutritionistFilter").value;
-
-            const filtered = allData.filter(row => {
-                return (!type || getType(row) === type) &&
-                       (!year || getYear(row) === year) &&
-                       (!month || getMonth(row) === month) &&
-                       (!week || getWeek(row) === week) &&
-                       (!date || getISODate(row) === date) &&
-                       (!nutritionist || getNutritionist(row) === nutritionist);
-            });
-
-            renderTopCards(filtered);
-            renderNutritionistSummary(filtered);
-            renderYearlyTable(filtered, year);
-        }
-
-        function renderTopCards(data) {
-            let totalSales = 0;
-            let totalNetSales = 0;
-
-            data.forEach(row => {
-                totalSales += getTotalSales(row);
-                totalNetSales += getNetSales(row);
-            });
-
-            document.getElementById("cardTotalSales").innerText = formatCurrency(totalSales);
-            document.getElementById("cardTotalNetSales").innerText = formatCurrency(totalNetSales);
-        }
-
-        function renderNutritionistSummary(data) {
-            const container = document.getElementById("nutritionistSummary");
-            const grouped = {};
-
-            data.forEach(row => {
-                const name = getNutritionist(row) || "Unassigned";
-                if (!grouped[name]) grouped[name] = { sales: 0, net: 0 };
-                grouped[name].sales += getTotalSales(row);
-                grouped[name].net += getNetSales(row);
-            });
-
-            const names = Object.keys(grouped).sort();
-
-            if (!names.length) {
-                container.innerHTML = `<div class="empty">No data found for selected filters.</div>`;
-                return;
-            }
-
-            let grandSales = 0;
-            let grandNet = 0;
-
-            let html = `
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nutritionist</th>
-                                <th class="number">Total Sales</th>
-                                <th class="number">Total Net Sales</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            names.forEach(name => {
-                const sales = grouped[name].sales;
-                const net = grouped[name].net;
-                grandSales += sales;
-                grandNet += net;
-
-                html += `
+    let html = `
+        <div class="table-wrap">
+            <table>
+                <thead>
                     <tr>
-                        <td>${escapeHtml(name)}</td>
-                        <td class="number">${formatCurrency(sales)}</td>
-                        <td class="number">${formatCurrency(net)}</td>
+                        <th>Nutritionist</th>
+                        <th class="number">Total Sales</th>
+                        <th class="number">Total Net Sales</th>
                     </tr>
-                `;
-            });
+                </thead>
+                <tbody>
+    `;
 
-            html += `
-                    <tr class="total-row">
-                        <td>Total</td>
-                        <td class="number">${formatCurrency(grandSales)}</td>
-                        <td class="number">${formatCurrency(grandNet)}</td>
-                    </tr>
-                        </tbody>
-                    </table>
-                </div>
-            `;
+    names.forEach(name => {
+        const sales = grouped[name].sales;
+        const net = grouped[name].net;
+        grandSales += sales;
+        grandNet += net;
 
-            container.innerHTML = html;
-        }
+        html += `
+            <tr>
+                <td>${escapeHtml(name)}</td>
+                <td class="number">${formatCurrency(sales)}</td>
+                <td class="number">${formatCurrency(net)}</td>
+            </tr>
+        `;
+    });
 
-        function renderYearlyTable(data, selectedYear) {
-            const container = document.getElementById("expertYearlyTable");
-            const yearToUse = selectedYear || "";
+    html += `
+            <tr class="total-row">
+                <td>Total</td>
+                <td class="number">${formatCurrency(grandSales)}</td>
+                <td class="number">${formatCurrency(grandNet)}</td>
+            </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
 
-            if (!yearToUse) {
-                container.innerHTML = `<div class="empty">Please select a year.</div>`;
-                return;
-            }
+    container.innerHTML = html;
+}
 
-            const yearData = data.filter(row => getYear(row) === yearToUse);
+function renderYearlyTableFromYearFilter() {
+    const selectedYear = document.getElementById("yearlyYearFilter").value;
+    renderYearlyTable(selectedYear);
+}
 
-            const monthly = {};
-            monthOrder.forEach(m => {
-                monthly[m] = {
-                    onlineSale: 0,
-                    commission: 0,
-                    netSales: 0,
-                    offlineSale: 0,
-                    grandTotal: 0
-                };
-            });
+function renderYearlyTable(selectedYear) {
+    const container = document.getElementById("expertYearlyTable");
 
-            yearData.forEach(row => {
-                const month = getMonth(row);
-                if (!month || !monthly[month]) return;
+    if (!selectedYear) {
+        container.innerHTML = `<div class="empty">Please select a year.</div>`;
+        return;
+    }
 
-                const type = getType(row).toLowerCase();
-                const total = getTotalSales(row);
-                const net = getNetSales(row);
-                const comm = getCommission(row);
+    const yearData = allData.filter(row => getYear(row) === selectedYear);
 
-                if (type === "online") {
-                    monthly[month].onlineSale += total;
-                    monthly[month].commission += comm;
-                    monthly[month].netSales += net;
-                } else if (type === "offline") {
-                    monthly[month].offlineSale += total;
-                }
-            });
+    const monthly = {};
+    monthOrder.forEach(month => {
+        monthly[month] = 0;
+    });
 
-            let totalOnline = 0;
-            let totalComm = 0;
-            let totalNet = 0;
-            let totalOffline = 0;
-            let prevGrand = null;
+    yearData.forEach(row => {
+        const month = getMonth(row);
+        if (!month || monthly[month] === undefined) return;
+        monthly[month] += getTotalSales(row);
+    });
 
-            let html = `
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Months</th>
-                                <th class="number">Online Sale</th>
-                                <th class="number">Commission</th>
-                                <th class="number">Net Sales</th>
-                                <th class="number">Offline Sale</th>
-                                <th class="number">Grand Total</th>
-                                <th class="number">Difference from Last Month</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            monthOrder.forEach(month => {
-                const r = monthly[month];
-                r.grandTotal = r.netSales + r.offlineSale;
-
-                const diff = prevGrand === null ? 0 : r.grandTotal - prevGrand;
-                prevGrand = r.grandTotal;
-
-                totalOnline += r.onlineSale;
-                totalComm += r.commission;
-                totalNet += r.netSales;
-                totalOffline += r.offlineSale;
-
-                html += `
+    let grandTotal = 0;
+    let html = `
+        <div class="table-wrap">
+            <table>
+                <thead>
                     <tr>
-                        <td>Total sales in ${month} '${String(yearToUse).slice(-2)}</td>
-                        <td class="number">${formatPlain(r.onlineSale)}</td>
-                        <td class="number">${formatPlain(r.commission)}</td>
-                        <td class="number">${formatPlain(r.netSales)}</td>
-                        <td class="number">${formatPlain(r.offlineSale)}</td>
-                        <td class="number">${formatPlain(r.grandTotal)}</td>
-                        <td class="number">${formatPlain(diff)}</td>
+                        <th>Months</th>
+                        <th class="number">Total Sales</th>
                     </tr>
-                `;
-            });
+                </thead>
+                <tbody>
+    `;
 
-            html += `
-                    <tr class="total-row">
-                        <td>Total</td>
-                        <td class="number">${formatPlain(totalOnline)}</td>
-                        <td class="number">${formatPlain(totalComm)}</td>
-                        <td class="number">${formatPlain(totalNet)}</td>
-                        <td class="number">${formatPlain(totalOffline)}</td>
-                        <td class="number">${formatPlain(totalNet + totalOffline)}</td>
-                        <td class="number">-</td>
-                    </tr>
-                        </tbody>
-                    </table>
-                </div>
-            `;
+    monthOrder.forEach(month => {
+        const value = monthly[month];
+        grandTotal += value;
 
-            container.innerHTML = html;
-        }
+        html += `
+            <tr>
+                <td>Total sales in ${month} '${String(selectedYear).slice(-2)}</td>
+                <td class="number">${formatPlain(value)}</td>
+            </tr>
+        `;
+    });
 
-        async function initDashboard() {
-            try {
-                document.getElementById("nutritionistSummary").innerHTML = `<div class="loading">Loading summary...</div>`;
-                document.getElementById("expertYearlyTable").innerHTML = `<div class="loading">Loading yearly table...</div>`;
+    html += `
+            <tr class="total-row">
+                <td>Total</td>
+                <td class="number">${formatPlain(grandTotal)}</td>
+            </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
 
-                allData = await fetchAllRecords();
-                console.log("TOTAL FETCHED:", allData.length);
-                console.log("SAMPLE ROW:", allData[0]);
+    container.innerHTML = html;
+}
 
-                populateFilters();
-                applyFilters();
-            } catch (error) {
-                console.log("ERROR:", error);
-                document.getElementById("nutritionistSummary").innerHTML = `<div class="empty">Error loading dashboard.</div>`;
-                document.getElementById("expertYearlyTable").innerHTML = "";
-            }
-        }
+async function initDashboard() {
+    try {
+        document.getElementById("nutritionistSummary").innerHTML = `<div class="loading">Loading summary...</div>`;
+        document.getElementById("expertYearlyTable").innerHTML = `<div class="loading">Loading yearly table...</div>`;
 
-        initDashboard();
-    </script>
+        allData = await fetchAllRecords();
+        populateFilters();
+        applyFilters();
+        renderYearlyTableFromYearFilter();
+    } catch (error) {
+        console.log("ERROR:", error);
+        document.getElementById("nutritionistSummary").innerHTML = `<div class="empty">Error loading dashboard.</div>`;
+        document.getElementById("expertYearlyTable").innerHTML = "";
+    }
+}
+
+initDashboard();
+</script>
+
 </body>
 </html>

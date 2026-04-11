@@ -45,7 +45,7 @@
         }
         .cards {
             display: grid;
-            grid-template-columns: repeat(2, minmax(220px, 1fr));
+            grid-template-columns: repeat(4, minmax(220px, 1fr));
             gap: 14px;
             margin-bottom: 22px;
         }
@@ -118,7 +118,7 @@
 <body>
     <div class="dashboard-card">
         <h2>🚀 NOP Dashboard</h2>
-        <p class="subtitle">varu</p>
+        <p class="subtitle">v1</p>
 
         <div class="filters-wrap">
             <select id="typeFilter" onchange="applyFilters()"></select>
@@ -131,12 +131,20 @@
 
         <div class="cards">
             <div class="mini-card">
-                <div class="label">Filtered Total Sales</div>
+                <div class="label">Total Sales</div>
                 <div class="value" id="cardTotalSales">₹ 0.00</div>
             </div>
             <div class="mini-card">
-                <div class="label">Filtered Total Net Sales</div>
+                <div class="label">Total Net Sales</div>
                 <div class="value" id="cardTotalNetSales">₹ 0.00</div>
+            </div>
+            <div class="mini-card">
+                <div class="label">Total Offline Sales</div>
+                <div class="value" id="cardTotalOfflineSales">₹ 0.00</div>
+            </div>
+            <div class="mini-card">
+                <div class="label">Grand Total</div>
+                <div class="value" id="cardGrandTotal">₹ 0.00</div>
             </div>
         </div>
 
@@ -296,6 +304,10 @@ function getNetSales(row) {
     return getNumber(getField(row, ["Actual Amount", "Actual_Amount", "Net Sales", "Total Net Sales", "Total_Net_Sales"]));
 }
 
+function getCommission(row) {
+    return getNumber(getField(row, ["Commission", "Total Commission", "Total_Commission"]));
+}
+
 async function fetchAllRecords() {
     let merged = [];
     let cursor = null;
@@ -395,14 +407,29 @@ function applyFilters() {
 function renderTopCards(data) {
     let totalSales = 0;
     let totalNetSales = 0;
+    let totalOfflineSales = 0;
 
     data.forEach(row => {
-        totalSales += getTotalSales(row);
-        totalNetSales += getNetSales(row);
+        const type = getType(row).toLowerCase();
+        const sales = getTotalSales(row);
+
+        if (type === "offline") {
+            totalOfflineSales += sales;
+        } else {
+            const commission = getCommission(row);
+            const net = sales - commission;
+
+            totalSales += sales;
+            totalNetSales += net;
+        }
     });
+
+    const grandTotal = totalNetSales + totalOfflineSales;
 
     document.getElementById("cardTotalSales").innerText = formatCurrency(totalSales);
     document.getElementById("cardTotalNetSales").innerText = formatCurrency(totalNetSales);
+    document.getElementById("cardTotalOfflineSales").innerText = formatCurrency(totalOfflineSales);
+    document.getElementById("cardGrandTotal").innerText = formatCurrency(grandTotal);
 }
 
 function renderNutritionistSummary(data) {
@@ -415,11 +442,13 @@ function renderNutritionistSummary(data) {
 
         const type = getType(row).toLowerCase();
         const sales = getTotalSales(row);
-        const net = getNetSales(row);
+        const commission = getCommission(row);
 
         if (type === "offline") {
             grouped[name].offline += sales;
         } else {
+            const net = sales - commission;
+
             grouped[name].sales += sales;
             grouped[name].net += net;
         }

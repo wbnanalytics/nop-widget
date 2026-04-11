@@ -3,32 +3,28 @@
 <head>
     <title>NOP Dashboard</title>
 
-    <script src="https://js.zohostatic.com/creator/widgets/version/1.0/widgetsdk-min.js"></script>
+    <script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
 
     <style>
         body {
             font-family: Arial;
-            background: #f5f7fb;
             padding: 20px;
+        }
+
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
         }
 
         .filters {
             display: flex;
             gap: 10px;
-            flex-wrap: wrap;
             margin-bottom: 20px;
         }
 
         select {
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 5px;
         }
     </style>
 </head>
@@ -36,7 +32,6 @@
 <body>
 
 <div class="card">
-
     <h2>🚀 NOP Dashboard</h2>
 
     <div class="filters">
@@ -51,7 +46,6 @@
     <div id="content">
         <p>Data will load here...</p>
     </div>
-
 </div>
 
 <script>

@@ -4,10 +4,74 @@
     <title>NOP Dashboard</title>
     <script src="https://static.zohocdn.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        .card { background: #fff; padding: 20px; border-radius: 10px; }
-        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        select { padding: 5px; }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        select, input[type="date"] {
+            padding: 8px 10px;
+            border: 1px solid #cfcfcf;
+            border-radius: 6px;
+            min-width: 120px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 20px 0 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: #fff;
+        }
+
+        th, td {
+            border: 1px solid #dcdcdc;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eef3ff;
+        }
+
+        .number {
+            text-align: right;
+        }
+
+        .total-row {
+            font-weight: 700;
+            background: #fff8cc;
+        }
+
+        .muted {
+            color: #666;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -18,107 +82,330 @@
         <select id="typeFilter" onchange="applyFilters()"></select>
         <select id="yearFilter" onchange="applyFilters()"></select>
         <select id="monthFilter" onchange="applyFilters()"></select>
+        <select id="weekFilter" onchange="applyFilters()"></select>
+        <input type="date" id="dateFilter" onchange="applyFilters()" />
         <select id="nutritionistFilter" onchange="applyFilters()"></select>
     </div>
 
-    <div id="content">
-        <p>Loading...</p>
-    </div>
+    <div class="section-title">Nutritionist Summary</div>
+    <div id="nutritionistSummary" class="muted">Loading...</div>
+
+    <div class="section-title">Expert Yearly Table</div>
+    <div id="expertYearlyTable" class="muted">Loading...</div>
 </div>
 
 <script>
 let allData = [];
+const monthOrder = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+];
 
 ZOHO.CREATOR.DATA.getRecords({
     app_name: "nop-sales-summary",
-    report_name: "Sales_Summary_Report"
+    report_name: "Sales_Summary_Report",
+    max_records: 1000
 }).then(function(response) {
-
     allData = response.data || [];
-
-    console.log("DATA:", allData);
-
     populateFilters();
-    renderSummary(allData);
-
+    applyFilters();
+}).catch(function(error) {
+    document.getElementById("nutritionistSummary").innerHTML = "Error: " + JSON.stringify(error);
+    document.getElementById("expertYearlyTable").innerHTML = "";
+    console.log(error);
 });
 
+function fillDropdown(id, values, placeholder) {
+    const el = document.getElementById(id);
+    el.innerHTML = `<option value="">All ${placeholder}</option>`;
+    values.forEach(v => {
+        el.innerHTML += `<option value="${escapeHtml(String(v))}">${escapeHtml(String(v))}</option>`;
+    });
+}
 
-// 🔹 Populate dropdowns
 function populateFilters() {
+    const types = [...new Set(allData.map(r => r.Type).filter(Boolean))].sort();
+    const months = monthOrder.filter(m => allData.some(r => r.Month === m));
+    const nutritionists = [...new Set(allData.map(r => r.Assigned_Nutritionist).filter(Boolean))].sort();
 
-    let years = new Set();
-    let months = new Set();
-    let types = new Set();
-    let nutritionists = new Set();
+    const years = [...new Set(
+        allData.map(r => getYearFromRow(r)).filter(Boolean)
+    )].sort();
 
-    allData.forEach(r => {
-        if(r.Month) months.add(r.Month);
-        if(r.Type) types.add(r.Type);
-        if(r.Assigned_Nutritionist) nutritionists.add(r.Assigned_Nutritionist);
+    fillDropdown("typeFilter", types, "Type");
+    fillDropdown("yearFilter", years, "Year");
+    fillDropdown("monthFilter", months, "Month");
+    fillDropdown("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "Week");
+    fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
+}
 
-        if(r.DOS){
-            let year = new Date(r.DOS).getFullYear();
-            if(!isNaN(year)) years.add(year);
+function getYearFromRow(row) {
+    if (!row.DOS) return "";
+    const d = parseDate(row.DOS);
+    return d ? String(d.getFullYear()) : "";
+}
+
+function parseDate(value) {
+    if (!value) return null;
+
+    if (value instanceof Date) return value;
+
+    const str = String(value).trim();
+
+    const iso = new Date(str);
+    if (!isNaN(iso.getTime())) return iso;
+
+    const parts = str.split("-");
+    if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const monText = parts[1];
+        const year = parseInt(parts[2], 10);
+
+        const monthMap = {
+            Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5,
+            Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11
+        };
+
+        if (!isNaN(day) && !isNaN(year) && monthMap.hasOwnProperty(monText)) {
+            return new Date(year, monthMap[monText], day);
+        }
+    }
+
+    return null;
+}
+
+function getWeekLabel(dateObj) {
+    if (!dateObj) return "";
+    const day = dateObj.getDate();
+    if (day >= 1 && day <= 7) return "Week1";
+    if (day >= 8 && day <= 14) return "Week2";
+    if (day >= 15 && day <= 21) return "Week3";
+    if (day >= 22 && day <= 28) return "Week4";
+    return "Week5";
+}
+
+function getNumber(val) {
+    if (val === null || val === undefined || val === "") return 0;
+    return parseFloat(String(val).replace(/,/g, "")) || 0;
+}
+
+function applyFilters() {
+    const type = document.getElementById("typeFilter").value;
+    const year = document.getElementById("yearFilter").value;
+    const month = document.getElementById("monthFilter").value;
+    const week = document.getElementById("weekFilter").value;
+    const date = document.getElementById("dateFilter").value;
+    const nutritionist = document.getElementById("nutritionistFilter").value;
+
+    const filtered = allData.filter(row => {
+        const rowDate = parseDate(row.DOS);
+        const rowYear = rowDate ? String(rowDate.getFullYear()) : "";
+        const rowWeek = rowDate ? getWeekLabel(rowDate) : "";
+        const rowDateISO = rowDate ? rowDate.toISOString().split("T")[0] : "";
+
+        return (!type || row.Type === type) &&
+               (!year || rowYear === year) &&
+               (!month || row.Month === month) &&
+               (!week || rowWeek === week) &&
+               (!date || rowDateISO === date) &&
+               (!nutritionist || row.Assigned_Nutritionist === nutritionist);
+    });
+
+    renderNutritionistSummary(filtered);
+    renderExpertYearlyTable(filtered, year);
+}
+
+function renderNutritionistSummary(data) {
+    const container = document.getElementById("nutritionistSummary");
+
+    const grouped = {};
+
+    data.forEach(row => {
+        const name = row.Assigned_Nutritionist || "Unassigned";
+
+        if (!grouped[name]) {
+            grouped[name] = {
+                sales: 0,
+                netSales: 0
+            };
+        }
+
+        grouped[name].sales += getNumber(row.Total_Amount);
+        grouped[name].netSales += getNumber(row.Actual_Amount);
+    });
+
+    const names = Object.keys(grouped).sort();
+
+    if (!names.length) {
+        container.innerHTML = "<div class='muted'>No data found.</div>";
+        return;
+    }
+
+    let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Nutritionist</th>
+                    <th class="number">Total Sales</th>
+                    <th class="number">Total Net Sales</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let grandSales = 0;
+    let grandNet = 0;
+
+    names.forEach(name => {
+        const sales = grouped[name].sales;
+        const net = grouped[name].netSales;
+        grandSales += sales;
+        grandNet += net;
+
+        html += `
+            <tr>
+                <td>${escapeHtml(name)}</td>
+                <td class="number">₹ ${formatNumber(sales)}</td>
+                <td class="number">₹ ${formatNumber(net)}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            <tr class="total-row">
+                <td>Total</td>
+                <td class="number">₹ ${formatNumber(grandSales)}</td>
+                <td class="number">₹ ${formatNumber(grandNet)}</td>
+            </tr>
+        </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+function renderExpertYearlyTable(data, selectedYear) {
+    const container = document.getElementById("expertYearlyTable");
+
+    const yearToUse = selectedYear || getDefaultYear(data);
+
+    if (!yearToUse) {
+        container.innerHTML = "<div class='muted'>No yearly data found.</div>";
+        return;
+    }
+
+    const yearData = data.filter(row => {
+        const d = parseDate(row.DOS);
+        return d && String(d.getFullYear()) === String(yearToUse);
+    });
+
+    const monthly = {};
+    monthOrder.forEach(m => {
+        monthly[m] = {
+            onlineSales: 0,
+            commission: 0,
+            netSales: 0,
+            offlineSales: 0
+        };
+    });
+
+    yearData.forEach(row => {
+        const month = row.Month;
+        if (!month || !monthly[month]) return;
+
+        const type = (row.Type || "").toLowerCase();
+        const totalAmount = getNumber(row.Total_Amount);
+        const actualAmount = getNumber(row.Actual_Amount);
+        const commission = getNumber(row.Commission);
+
+        if (type === "online") {
+            monthly[month].onlineSales += totalAmount;
+            monthly[month].commission += commission;
+            monthly[month].netSales += actualAmount;
+        } else if (type === "offline") {
+            monthly[month].offlineSales += totalAmount;
         }
     });
 
-    fillDropdown("yearFilter", years);
-    fillDropdown("monthFilter", months);
-    fillDropdown("typeFilter", types);
-    fillDropdown("nutritionistFilter", nutritionists);
+    let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Months</th>
+                    <th class="number">Online Sale</th>
+                    <th class="number">Commission</th>
+                    <th class="number">Net Sales</th>
+                    <th class="number">Offline Sale</th>
+                    <th class="number">Grand Total</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let totalOnline = 0;
+    let totalCommission = 0;
+    let totalNet = 0;
+    let totalOffline = 0;
+    let prevGrand = null;
+
+    monthOrder.forEach(month => {
+        const row = monthly[month];
+        const grand = row.netSales + row.offlineSales;
+
+        totalOnline += row.onlineSales;
+        totalCommission += row.commission;
+        totalNet += row.netSales;
+        totalOffline += row.offlineSales;
+
+        html += `
+            <tr>
+                <td>Total sales in ${month} '${String(yearToUse).slice(-2)}</td>
+                <td class="number">${formatNumber(row.onlineSales)}</td>
+                <td class="number">${formatNumber(row.commission)}</td>
+                <td class="number">${formatNumber(row.netSales)}</td>
+                <td class="number">${formatNumber(row.offlineSales)}</td>
+                <td class="number">${formatNumber(grand)}</td>
+            </tr>
+        `;
+
+        prevGrand = grand;
+    });
+
+    html += `
+        <tr class="total-row">
+            <td>Total</td>
+            <td class="number">${formatNumber(totalOnline)}</td>
+            <td class="number">${formatNumber(totalCommission)}</td>
+            <td class="number">${formatNumber(totalNet)}</td>
+            <td class="number">${formatNumber(totalOffline)}</td>
+            <td class="number">${formatNumber(totalNet + totalOffline)}</td>
+        </tr>
+    `;
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
+function getDefaultYear(data) {
+    const years = [...new Set(
+        data.map(r => getYearFromRow(r)).filter(Boolean)
+    )].sort();
+    return years.length ? years[years.length - 1] : "";
+}
 
-// 🔹 Fill dropdown helper
-function fillDropdown(id, values){
-    let el = document.getElementById(id);
-    el.innerHTML = `<option value="">All</option>`;
-
-    values.forEach(v => {
-        el.innerHTML += `<option value="${v}">${v}</option>`;
+function formatNumber(num) {
+    return Number(num || 0).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
     });
 }
 
-
-// 🔹 Apply filters
-function applyFilters(){
-
-    let year = document.getElementById("yearFilter").value;
-    let month = document.getElementById("monthFilter").value;
-    let type = document.getElementById("typeFilter").value;
-    let nutritionist = document.getElementById("nutritionistFilter").value;
-
-    let filtered = allData.filter(r => {
-
-        let recordYear = r.DOS ? new Date(r.DOS).getFullYear().toString() : "";
-
-        return (!year || recordYear == year) &&
-               (!month || r.Month == month) &&
-               (!type || r.Type == type) &&
-               (!nutritionist || r.Assigned_Nutritionist == nutritionist);
-    });
-
-    renderSummary(filtered);
+function escapeHtml(str) {
+    return str
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
-
-
-// 🔹 Summary (TEMP - next step we improve)
-function renderSummary(data){
-
-    let totalSales = 0;
-
-    data.forEach(r => {
-        totalSales += parseFloat(r.Total_Amount || 0);
-    });
-
-    document.getElementById("content").innerHTML =
-        `<b>Total Sales:</b> ₹ ${totalSales.toFixed(2)} 
-         <br><b>Total Records:</b> ${data.length}`;
-}
-
 </script>
-
-
-</body>
-</html>

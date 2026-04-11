@@ -15,12 +15,10 @@
     <h2>🚀 NOP Dashboard</h2>
 
     <div class="filters">
-        <select><option>Type</option></select>
-        <select><option>Year</option></select>
-        <select><option>Month</option></select>
-        <select><option>Week</option></select>
-        <select><option>Date</option></select>
-        <select><option>Nutritionist</option></select>
+        <select id="typeFilter" onchange="applyFilters()"></select>
+        <select id="yearFilter" onchange="applyFilters()"></select>
+        <select id="monthFilter" onchange="applyFilters()"></select>
+        <select id="nutritionistFilter" onchange="applyFilters()"></select>
     </div>
 
     <div id="content">
@@ -29,47 +27,96 @@
 </div>
 
 <script>
+let allData = [];
+
 ZOHO.CREATOR.DATA.getRecords({
     app_name: "nop-sales-summary",
     report_name: "Sales_Summary_Report"
-})
-.then(function(response) {
-    console.log("SUCCESS:", response);
+}).then(function(response) {
 
-    const records = response.data || [];
+    allData = response.data || [];
 
-    let totalSales = 0;
-    let totalNetSales = 0;
-    let totalCommission = 0;
+    console.log("DATA:", allData);
 
-    records.forEach(function(row) {
-        totalSales += parseFloat(row["Total_Sales"] || 0);
-        totalNetSales += parseFloat(row["Total_Net_Sales"] || 0);
-        totalCommission += parseFloat(row["Total_Commission"] || 0);
+    populateFilters();
+    renderSummary(allData);
+
+});
+
+
+// 🔹 Populate dropdowns
+function populateFilters() {
+
+    let years = new Set();
+    let months = new Set();
+    let types = new Set();
+    let nutritionists = new Set();
+
+    allData.forEach(r => {
+        if(r.Month) months.add(r.Month);
+        if(r.Type) types.add(r.Type);
+        if(r.Assigned_Nutritionist) nutritionists.add(r.Assigned_Nutritionist);
+
+        if(r.DOS){
+            let year = new Date(r.DOS).getFullYear();
+            if(!isNaN(year)) years.add(year);
+        }
     });
 
-    document.getElementById("content").innerHTML = `
-        <div style="display:flex; gap:15px; margin-top:20px; flex-wrap:wrap;">
-            <div style="background:#f5f7ff; padding:15px; border-radius:10px; min-width:220px;">
-                <h3>Total Sales</h3>
-                <p style="font-size:22px; font-weight:bold;">${totalSales.toLocaleString()}</p>
-            </div>
-            <div style="background:#f5f7ff; padding:15px; border-radius:10px; min-width:220px;">
-                <h3>Total Net Sales</h3>
-                <p style="font-size:22px; font-weight:bold;">${totalNetSales.toLocaleString()}</p>
-            </div>
-            <div style="background:#f5f7ff; padding:15px; border-radius:10px; min-width:220px;">
-                <h3>Total Commission</h3>
-                <p style="font-size:22px; font-weight:bold;">${totalCommission.toLocaleString()}</p>
-            </div>
-        </div>
-    `;
-})
-.catch(function(error) {
-    console.log("ERROR:", error);
+    fillDropdown("yearFilter", years);
+    fillDropdown("monthFilter", months);
+    fillDropdown("typeFilter", types);
+    fillDropdown("nutritionistFilter", nutritionists);
+}
+
+
+// 🔹 Fill dropdown helper
+function fillDropdown(id, values){
+    let el = document.getElementById(id);
+    el.innerHTML = `<option value="">All</option>`;
+
+    values.forEach(v => {
+        el.innerHTML += `<option value="${v}">${v}</option>`;
+    });
+}
+
+
+// 🔹 Apply filters
+function applyFilters(){
+
+    let year = document.getElementById("yearFilter").value;
+    let month = document.getElementById("monthFilter").value;
+    let type = document.getElementById("typeFilter").value;
+    let nutritionist = document.getElementById("nutritionistFilter").value;
+
+    let filtered = allData.filter(r => {
+
+        let recordYear = r.DOS ? new Date(r.DOS).getFullYear().toString() : "";
+
+        return (!year || recordYear == year) &&
+               (!month || r.Month == month) &&
+               (!type || r.Type == type) &&
+               (!nutritionist || r.Assigned_Nutritionist == nutritionist);
+    });
+
+    renderSummary(filtered);
+}
+
+
+// 🔹 Summary (TEMP - next step we improve)
+function renderSummary(data){
+
+    let totalSales = 0;
+
+    data.forEach(r => {
+        totalSales += parseFloat(r.Total_Amount || 0);
+    });
+
     document.getElementById("content").innerHTML =
-        "Error: " + JSON.stringify(error);
-});
+        `<b>Total Sales:</b> ₹ ${totalSales.toFixed(2)} 
+         <br><b>Total Records:</b> ${data.length}`;
+}
+
 </script>
 
 

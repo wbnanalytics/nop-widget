@@ -8,25 +8,25 @@
         body {
             margin: 0;
             padding: 18px;
-            font-family: Arial, sans-serif;
-            color: #24324a;
+            font-family: "Courier New", monospace;
+            color: #3f7f9f;
             background: transparent;
         }
         .dashboard-card {
-            background: #fff;
-            border: 1px solid #e7edf6;
+            background: #edf7fb;
+            border: 1px solid #cfe5ee;
             border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 2px 10px rgba(25,42,70,0.06);
+            box-shadow: none;
         }
         h2 {
             margin: 0 0 8px;
             font-size: 32px;
-            color: #14233c;
+            color: #215c78;
         }
         .subtitle {
             margin: 0 0 20px;
-            color: #6b7a91;
+            color: #5f97ae;
             font-size: 14px;
         }
         .filters-wrap {
@@ -52,18 +52,18 @@
             margin-bottom: 22px;
         }
         .mini-card {
-            background: linear-gradient(180deg, #f8fbff 0%, #f3f7ff 100%);
-            border: 1px solid #e3eaf6;
+            background: #eef7fb;
+            border: 1px solid #d7e9f1;
             border-radius: 14px;
             padding: 16px;
         }
         .mini-card .label {
-            color: #6b7a91;
+            color: #5f97ae;
             font-size: 13px;
             margin-bottom: 8px;
         }
         .mini-card .value {
-            color: #162742;
+            color: #215c78;
             font-size: 26px;
             font-weight: 700;
         }
@@ -85,24 +85,25 @@
             min-width: 980px;
         }
         th {
-            background: #eef4ff;
-            color: #294160;
+            background: #dff1f7;
+            color: #215c78;
             font-size: 14px;
             font-weight: 700;
             text-align: left;
             padding: 12px 10px;
-            border-bottom: 1px solid #dde6f3;
+            border-bottom: 1px solid #cfe5ee;
         }
         td {
             padding: 11px 10px;
             font-size: 14px;
-            color: #24324a;
-            border-bottom: 1px solid #edf2f8;
+            color: #4b8aa6;
+            border-bottom: 1px solid #dcecf3;
         }
         th.number, td.number { text-align: right; white-space: nowrap; }
         tr.total-row td {
             font-weight: 700;
-            background: #fff9d8;
+            background: #f8f1bf;
+            color: #215c78;
         }
         .empty, .loading {
             color: #6d7c92;
@@ -120,7 +121,7 @@
 <body>
     <div class="dashboard-card">
         <h2>🚀 NOP Dashboard</h2>
-        <p class="subtitle">v2</p>
+        <!-- <p class="subtitle">v2</p> -->
 
         <div class="filters-wrap">
             <select id="typeFilter" onchange="applyFilters()"></select>
@@ -367,8 +368,8 @@ function populateFilters() {
     fillDropdown("yearlyYearFilter", years, "Year");
 
     if (years.length) {
-        document.getElementById("yearFilter").value = years[years.length - 1];
-        document.getElementById("yearlyYearFilter").value = years[years.length - 1];
+        document.getElementById("yearFilter").value = "";
+    document.getElementById("yearlyYearFilter").value = years[years.length - 1];
     }
 }
 
@@ -474,6 +475,7 @@ function renderNutritionistSummary(data) {
                     <thead>
                         <tr>
                             <th>Nutritionist</th>
+                            <th class="number">Contribution %</th>
                             <th class="number">Total Net Sales</th>
                             <th class="number">Total Offline Sales</th>
                             <th class="number">Grand Total</th>
@@ -483,29 +485,39 @@ function renderNutritionistSummary(data) {
         `;
 
     names.forEach(name => {
-        const sales = grouped[name].sales;
-        const net = grouped[name].net;
-        const offline = grouped[name].offline;
-        const grand = net + offline;
+    const sales = grouped[name].sales;
+    const net = grouped[name].net;
+    const offline = grouped[name].offline;
+    const grand = net + offline;
 
-        grandSales += sales;
-        grandNet += net;
-        grandOffline += offline;
-        grandTotal += grand;
+    grandSales += sales;
+    grandNet += net;
+    grandOffline += offline;
+    grandTotal += grand;
+});
 
-        html += `
-            <tr>
-                <td>${escapeHtml(name)}</td>
-                <td class="number">${formatCurrency(net)}</td>
-                <td class="number">${formatCurrency(offline)}</td>
-                <td class="number">${formatCurrency(grand)}</td>
-            </tr>
-        `;
-    });
+names.forEach(name => {
+    const sales = grouped[name].sales;
+    const net = grouped[name].net;
+    const offline = grouped[name].offline;
+    const grand = net + offline;
+    const pct = grandTotal ? ((grand / grandTotal) * 100).toFixed(2) + "%" : "0.00%";
+
+    html += `
+        <tr>
+            <td>${escapeHtml(name)}</td>
+            <td class="number">${pct}</td>
+            <td class="number">${formatCurrency(net)}</td>
+            <td class="number">${formatCurrency(offline)}</td>
+            <td class="number">${formatCurrency(grand)}</td>
+        </tr>
+    `;
+});
 
     html += `
             <tr class="total-row">
                 <td>Total</td>
+                <td class="number">100.00%</td>
                 <td class="number">${formatCurrency(grandNet)}</td>
                 <td class="number">${formatCurrency(grandOffline)}</td>
                 <td class="number">${formatCurrency(grandTotal)}</td>

@@ -147,7 +147,7 @@
 
         <div class="section">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
-                <h3 style="margin:0;">Yearly Table</h3>
+                <h3 style="margin:0;">Yearly Sales</h3>
                 <select id="yearlyYearFilter" onchange="renderYearlyTableFromYearFilter()" style="max-width:180px;">
                 </select>
             </div>
@@ -317,10 +317,19 @@ function fillDropdown(id, values, label) {
 }
 
 function populateFilters() {
-    const types = [...new Set(allData.map(getType).filter(Boolean))].sort();
-    const years = [...new Set(allData.map(getYear).filter(Boolean))].sort();
-    const months = monthOrder.filter(m => allData.some(r => getMonth(r) === m));
-    const nutritionists = [...new Set(allData.map(getNutritionist).filter(Boolean))].sort();
+    const types = [...new Set(allData.map(r => getType(r).trim()).filter(v => v !== ""))].sort();
+    const years = [...new Set(allData.map(r => getYear(r)).filter(v => v !== ""))].sort();
+    const months = monthOrder.filter(m =>
+        allData.some(r => {
+            let month = getMonth(r);
+            if (month) {
+                const x = month.toLowerCase().slice(0,3);
+                month = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+            }
+            return month === m;
+        })
+    );
+    const nutritionists = [...new Set(allData.map(r => getNutritionist(r).trim()).filter(v => v !== ""))].sort();
 
     fillDropdown("typeFilter", types, "Type");
     fillDropdown("yearFilter", years, "Year");
@@ -344,20 +353,26 @@ function applyFilters() {
     const nutritionist = document.getElementById("nutritionistFilter").value;
 
     const filtered = allData.filter(row => {
-        const rowType = getType(row).trim().toLowerCase();
-        const rowYear = getYear(row);
-        const rowMonth = getMonth(row);
-        const rowWeek = getWeek(row);
-        const rowDate = getISODate(row);
-        const rowNutritionist = getNutritionist(row);
+    const rowType = getType(row).trim().toLowerCase();
+    const rowYear = getYear(row);
 
-        return (!type || rowType === type) &&
-               (!year || rowYear === year) &&
-               (!month || rowMonth === month) &&
-               (!week || rowWeek === week) &&
-               (!date || rowDate === date) &&
-               (!nutritionist || rowNutritionist === nutritionist);
-    });
+    let rowMonth = getMonth(row);
+    if (rowMonth) {
+        const x = rowMonth.toLowerCase().slice(0,3);
+        rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+    }
+
+    const rowWeek = getWeek(row);
+    const rowDate = getISODate(row);
+    const rowNutritionist = getNutritionist(row).trim();
+
+    return (!type || rowType === type) &&
+           (!year || rowYear === year) &&
+           (!month || rowMonth === month) &&
+           (!week || rowWeek === week) &&
+           (!date || rowDate === date) &&
+           (!nutritionist || rowNutritionist === nutritionist);
+});
 
     renderTopCards(filtered);
     renderNutritionistSummary(filtered);

@@ -460,7 +460,13 @@ function renderYearlyTable(selectedYear) {
     });
 
     yearData.forEach(row => {
-        const month = getMonth(row);
+        let month = getMonth(row);
+
+        // normalize month (VERY IMPORTANT FIX)
+        if (month) {
+            const m = month.toLowerCase().slice(0,3);
+            month = monthOrder.find(x => x.toLowerCase().startsWith(m)) || "";
+        }
         if (!month || monthly[month] === undefined) return;
         monthly[month] += getTotalSales(row);
     });

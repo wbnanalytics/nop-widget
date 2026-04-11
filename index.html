@@ -118,7 +118,7 @@
 <body>
     <div class="dashboard-card">
         <h2>🚀 NOP Dashboard</h2>
-        <p class="subtitle">varu</p>
+        <p class="subtitle">varunn</p>
 
         <div class="filters-wrap">
             <select id="typeFilter" onchange="applyFilters()"></select>
@@ -411,9 +411,18 @@ function renderNutritionistSummary(data) {
 
     data.forEach(row => {
         const name = getNutritionist(row) || "Unassigned";
-        if (!grouped[name]) grouped[name] = { sales: 0, net: 0 };
-        grouped[name].sales += getTotalSales(row);
-        grouped[name].net += getNetSales(row);
+        if (!grouped[name]) grouped[name] = { sales: 0, net: 0, offline: 0 };
+
+        const type = getType(row).toLowerCase();
+        const sales = getTotalSales(row);
+        const net = getNetSales(row);
+
+        if (type === "offline") {
+            grouped[name].offline += sales;
+        } else {
+            grouped[name].sales += sales;
+            grouped[name].net += net;
+        }
     });
 
     const names = Object.keys(grouped).sort();
@@ -425,6 +434,8 @@ function renderNutritionistSummary(data) {
 
     let grandSales = 0;
     let grandNet = 0;
+    let grandOffline = 0;
+    let grandTotal = 0;
 
     let html = `
             <div class="table-wrap">
@@ -434,6 +445,8 @@ function renderNutritionistSummary(data) {
                             <th>Nutritionist</th>
                             <th class="number">Total Sales</th>
                             <th class="number">Total Net Sales</th>
+                            <th class="number">Total Offline Sales</th>
+                            <th class="number">Grand Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -442,14 +455,21 @@ function renderNutritionistSummary(data) {
     names.forEach(name => {
         const sales = grouped[name].sales;
         const net = grouped[name].net;
+        const offline = grouped[name].offline;
+        const grand = net + offline;
+
         grandSales += sales;
         grandNet += net;
+        grandOffline += offline;
+        grandTotal += grand;
 
         html += `
             <tr>
                 <td>${escapeHtml(name)}</td>
                 <td class="number">${formatCurrency(sales)}</td>
                 <td class="number">${formatCurrency(net)}</td>
+                <td class="number">${formatCurrency(offline)}</td>
+                <td class="number">${formatCurrency(grand)}</td>
             </tr>
         `;
     });
@@ -459,6 +479,8 @@ function renderNutritionistSummary(data) {
                 <td>Total</td>
                 <td class="number">${formatCurrency(grandSales)}</td>
                 <td class="number">${formatCurrency(grandNet)}</td>
+                <td class="number">${formatCurrency(grandOffline)}</td>
+                <td class="number">${formatCurrency(grandTotal)}</td>
             </tr>
                 </tbody>
             </table>
@@ -508,12 +530,12 @@ function renderYearlyTable(selectedYear) {
         const type = getType(row).toLowerCase();
         const commission = total - net;
 
-        monthly[month].total += total;
-        monthly[month].net += net;
-        monthly[month].commission += commission;
-
         if (type === "offline") {
             monthly[month].offline += total;
+        } else {
+            monthly[month].total += total;
+            monthly[month].net += net;
+            monthly[month].commission += commission;
         }
     });
 
@@ -544,7 +566,7 @@ function renderYearlyTable(selectedYear) {
     monthOrder.forEach(month => {
         const m = monthly[month];
         const grand = m.net + m.offline;
-        const diff = grand - prev;
+        const diff = prev === 0 ? 0 : grand - prev;
 
         prev = grand;
         totalSalesAll += m.total;

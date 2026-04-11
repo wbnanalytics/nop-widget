@@ -30,17 +30,48 @@
 
 <script>
 ZOHO.CREATOR.DATA.getRecords({
-    app_name: "nop-sales-summary",
+    app_name: "wellbeing_nutrition",
     report_name: "Sales_Summary_Report"
-}).then(function(response) {
+})
+.then(function(response) {
     console.log("SUCCESS:", response);
-    document.getElementById("content").innerHTML =
-        "Total Records: " + (response.data ? response.data.length : 0);
-}).catch(function(error) {
+
+    const records = response.data || [];
+
+    let totalSales = 0;
+    let totalNetSales = 0;
+    let totalCommission = 0;
+
+    records.forEach(function(row) {
+        totalSales += parseFloat(row["Total_Sales"] || 0);
+        totalNetSales += parseFloat(row["Total_Net_Sales"] || 0);
+        totalCommission += parseFloat(row["Total_Commission"] || 0);
+    });
+
+    document.getElementById("content").innerHTML = `
+        <div style="display:flex; gap:15px; margin-top:20px; flex-wrap:wrap;">
+            <div style="background:#f5f7ff; padding:15px; border-radius:10px; min-width:220px;">
+                <h3>Total Sales</h3>
+                <p style="font-size:22px; font-weight:bold;">${totalSales.toLocaleString()}</p>
+            </div>
+            <div style="background:#f5f7ff; padding:15px; border-radius:10px; min-width:220px;">
+                <h3>Total Net Sales</h3>
+                <p style="font-size:22px; font-weight:bold;">${totalNetSales.toLocaleString()}</p>
+            </div>
+            <div style="background:#f5f7ff; padding:15px; border-radius:10px; min-width:220px;">
+                <h3>Total Commission</h3>
+                <p style="font-size:22px; font-weight:bold;">${totalCommission.toLocaleString()}</p>
+            </div>
+        </div>
+    `;
+})
+.catch(function(error) {
     console.log("ERROR:", error);
     document.getElementById("content").innerHTML =
         "Error: " + JSON.stringify(error);
 });
 </script>
+
+
 </body>
 </html>

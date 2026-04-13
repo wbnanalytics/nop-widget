@@ -134,6 +134,7 @@
         @media (max-width: 700px) {
             .filters-wrap, .cards { grid-template-columns: 1fr; }
         }
+
     </style>
 </head>
 <body>
@@ -172,6 +173,33 @@
         </div>
 
         <div class="section">
+            <h3>🤖 Ask Varun!</h3>
+            <div class="table-wrap" style="padding:16px;">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+                    <input
+                        type="text"
+                        id="botQuestion"
+                        placeholder="Ask something like: show total sales for 2026"
+                        onkeydown="handleBotEnter(event)"
+                        style="flex:1;min-width:280px;padding:10px 12px;border:1px solid #cfd8e6;border-radius:10px;font-size:14px;"
+                    />
+                    <button type="button" class="action-btn" onclick="askBot()">Ask</button>
+                    <button type="button" class="action-btn" onclick="clearBot()">Clear</button>
+                </div>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                    <button type="button" class="action-btn" onclick="setBotQuestion('show total sales for 2026')">Total Sales 2026</button>
+                    <button type="button" class="action-btn" onclick="setBotQuestion('show net sales for March 2026')">Net Sales March</button>
+                    <button type="button" class="action-btn" onclick="setBotQuestion('show offline sales for Adina')">Offline Adina</button>
+                    <button type="button" class="action-btn" onclick="setBotQuestion('who is top nutritionist in 2026')">Top Nutritionist</button>
+                    <button type="button" class="action-btn" onclick="setBotQuestion('show yearly summary for 2026')">Yearly Summary</button>
+                </div>
+
+                <div id="botResponse" class="empty">Ask a question to begin.</div>
+            </div>
+        </div>
+
+        <div class="section">
             <h3>Nutritionist Summary</h3>
             <div id="nutritionistSummary" class="loading">Loading...</div>
         </div>
@@ -188,6 +216,253 @@
 
     <script>
 let allData = [];
+
+function setBotQuestion(text) {
+    document.getElementById("botQuestion").value = text;
+    askBot();
+}
+
+function handleBotEnter(event) {
+    if (event.key === "Enter") {
+        askBot();
+    }
+}
+
+function clearBot() {
+    document.getElementById("botQuestion").value = "";
+    document.getElementById("botResponse").innerHTML = "Ask a question to begin.";
+}
+
+function botExtractYear(q) {
+    const match = q.match(/\b(20\d{2})\b/);
+    return match ? match[1] : "";
+}
+
+function botExtractMonth(q) {
+    for (const month of monthOrder) {
+        if (q.includes(month.toLowerCase())) return month;
+        if (q.includes(month.toLowerCase().slice(0, 3))) return month;
+    }
+    return "";
+}
+
+function botExtractWeek(q) {
+    const match = q.match(/\bweek\s*([1-5])\b/i);
+    return match ? "Week" + match[1] : "";
+}
+
+function botFindNutritionist(q) {
+    const allNames = [...new Set(allData.map(r => getNutritionist(r).trim()).filter(Boolean))];
+    const qNorm = q.toLowerCase();
+
+    for (const name of allNames) {
+        if (qNorm.includes(name.toLowerCase())) {
+            return name;
+        }
+    }
+    return "";
+}
+
+function getBotFilteredData(q) {
+    const year = botExtractYear(q);
+    const month = botExtractMonth(q);
+    const week = botExtractWeek(q);
+    const nutritionist = botFindNutritionist(q);
+
+    return allData.filter(row => {
+        const rowYear = getYear(row);
+
+        let rowMonth = getMonth(row);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0, 3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        const rowWeek = getWeek(row);
+        const rowNutritionist = getNutritionist(row).trim();
+
+        return (!year || rowYear === year) &&
+               (!month || rowMonth === month) &&
+               (!week || rowWeek === week) &&
+               (!nutritionist || rowNutritionist === nutritionist);
+    });
+}
+
+function calcBotMetrics(data) {
+    let totalSales = 0;
+    let totalCommission = 0;
+    let totalNetSales = 0;
+    let totalOfflineSales = 0;
+
+    data.forEach(row => {
+        const type = getType(row).toLowerCase();
+        const sales = getTotalSales(row);
+        const commission = getCommission(row);
+
+        if (type === "offline") {
+            totalOfflineSales += sales;
+        } else {
+            totalSales += sales;
+            totalCommission += commission;
+            totalNetSales += (sales - commission);
+        }
+    });
+
+    return {
+        totalSales,
+        totalCommission,
+        totalNetSales,
+        totalOfflineSales,
+        grandTotal: totalNetSales + totalOfflineSales
+    };
+}
+
+function getTopNutritionists(data) {
+    const grouped = {};
+
+    data.forEach(row => {
+        const name = getNutritionist(row) || "Unassigned";
+        if (!grouped[name]) {
+            grouped[name] = { net: 0, offline: 0, total: 0 };
+        }
+
+        const type = getType(row).toLowerCase();
+        const sales = getTotalSales(row);
+        const commission = getCommission(row);
+
+        if (type === "offline") {
+            grouped[name].offline += sales;
+        } else {
+            grouped[name].net += (sales - commission);
+        }
+
+        grouped[name].total = grouped[name].net + grouped[name].offline;
+    });
+
+    return Object.keys(grouped)
+        .map(name => ({
+            name,
+            net: grouped[name].net,
+            offline: grouped[name].offline,
+            total: grouped[name].total
+        }))
+        .sort((a, b) => b.total - a.total);
+}
+
+function askBot() {
+    const q = (document.getElementById("botQuestion").value || "").trim().toLowerCase();
+    const output = document.getElementById("botResponse");
+
+    if (!q) {
+        output.innerHTML = "Please enter a question.";
+        return;
+    }
+
+    const filtered = getBotFilteredData(q);
+    const metrics = calcBotMetrics(filtered);
+
+    if (q.includes("top nutritionist")) {
+        const top = getTopNutritionists(filtered).slice(0, 5);
+
+        if (!top.length) {
+            output.innerHTML = "No matching data found.";
+            return;
+        }
+
+        let html = `<b>Top Nutritionists</b><br><br>`;
+        top.forEach((item, index) => {
+            html += `${index + 1}. ${escapeHtml(item.name)} — ${formatCurrency(item.total)}<br>`;
+        });
+        output.innerHTML = html;
+        return;
+    }
+
+    if (q.includes("yearly summary")) {
+        const year = botExtractYear(q);
+        if (!year) {
+            output.innerHTML = "Please mention a year. Example: show yearly summary for 2026";
+            return;
+        }
+
+        let html = `<b>Yearly Summary for ${year}</b><br><br>`;
+        monthOrder.forEach(month => {
+            const monthData = allData.filter(row => {
+                const rowYear = getYear(row);
+                let rowMonth = getMonth(row);
+                if (rowMonth) {
+                    const x = rowMonth.toLowerCase().slice(0, 3);
+                    rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+                }
+                return rowYear === year && rowMonth === month;
+            });
+
+            const m = calcBotMetrics(monthData);
+            html += `${month}: ${formatCurrency(m.grandTotal)}<br>`;
+        });
+
+        output.innerHTML = html;
+        return;
+    }
+
+    if (q.includes("offline")) {
+        output.innerHTML = `
+            <b>Offline Sales Summary</b><br><br>
+            Matched Records: ${filtered.length}<br>
+            Total Offline Sales: ${formatCurrency(metrics.totalOfflineSales)}<br>
+            Grand Total: ${formatCurrency(metrics.grandTotal)}
+        `;
+        return;
+    }
+
+    if (q.includes("net sales")) {
+        output.innerHTML = `
+            <b>Net Sales Summary</b><br><br>
+            Matched Records: ${filtered.length}<br>
+            Total Net Sales: ${formatCurrency(metrics.totalNetSales)}<br>
+            Grand Total: ${formatCurrency(metrics.grandTotal)}
+        `;
+        return;
+    }
+
+    if (q.includes("commission")) {
+        output.innerHTML = `
+            <b>Commission Summary</b><br><br>
+            Matched Records: ${filtered.length}<br>
+            Total Commission: ${formatCurrency(metrics.totalCommission)}
+        `;
+        return;
+    }
+
+    if (q.includes("sales") || q.includes("total sales")) {
+        output.innerHTML = `
+            <b>Sales Summary</b><br><br>
+            Matched Records: ${filtered.length}<br>
+            Total Sales: ${formatCurrency(metrics.totalSales)}<br>
+            Total Net Sales: ${formatCurrency(metrics.totalNetSales)}<br>
+            Total Offline Sales: ${formatCurrency(metrics.totalOfflineSales)}<br>
+            Grand Total: ${formatCurrency(metrics.grandTotal)}
+        `;
+        return;
+    }
+
+    if (q.includes("count") || q.includes("how many")) {
+        output.innerHTML = `
+            <b>Count Summary</b><br><br>
+            Matched Records: ${filtered.length}
+        `;
+        return;
+    }
+
+    output.innerHTML = `
+        <b>Ask Varun! did not understand fully.</b><br><br>
+        Try questions like:<br>
+        - show total sales for 2026<br>
+        - show net sales for March 2026<br>
+        - show offline sales for Adina<br>
+        - who is top nutritionist in 2026<br>
+        - show yearly summary for 2026
+    `;
+}
 
 const monthOrder = [
     "January","February","March","April","May","June",

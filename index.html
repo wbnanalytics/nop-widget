@@ -143,7 +143,7 @@
 
             .chart-filter-bar {
                 display: grid;
-                grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) minmax(160px, 200px);
+                grid-template-columns: minmax(130px, 160px) minmax(130px, 160px) minmax(140px, 180px) minmax(140px, 180px);
                 gap: 12px;
                 align-items: center;
                 margin-bottom: 14px;
@@ -204,6 +204,13 @@
                 gap: 12px;
                 flex-wrap: wrap;
                 margin-bottom: 14px;
+            }
+
+            .trend-controls {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                justify-content: flex-end;
             }
 
             .trend-filter {
@@ -300,24 +307,32 @@
             </div>
         </div>
 
+        <div class="section-divider"></div>
+
         <div class="section chart-section">
             <h3>Expert Sales Charts</h3>
 
             <div class="chart-filter-bar">
-                <select id="expertDurationFilter" onchange="renderExpertCharts()">
-                    <option value="Top5">Top 5</option>
-                    <option value="Top10">Top 10</option>
-                    <option value="Top20">Top 20</option>
-                    <option value="Top30">Top 30</option>
-                    <option value="Last5">Last 5</option>
-                    <option value="Last10">Last 10</option>
-                    <option value="Last20">Last 20</option>
-                    <option value="Last50">Last 50</option>
-                </select>
+            <select id="expertDurationFilter" onchange="renderExpertCharts()">
+                <option value="Top5">Top 5</option>
+                <option value="Top10">Top 10</option>
+                <option value="Top20">Top 20</option>
+                <option value="Top30">Top 30</option>
+                <option value="Last5">Last 5</option>
+                <option value="Last10">Last 10</option>
+                <option value="Last20">Last 20</option>
+                <option value="Last50">Last 50</option>
+            </select>
 
-                <select id="expertYearFilter" onchange="renderExpertCharts()"></select>
-                <select id="expertMonthFilter" onchange="renderExpertCharts()"></select>
-            </div>
+            <select id="expertTypeFilter" onchange="renderExpertCharts()">
+                <option value="">All Type</option>
+                <option value="online">Online</option>
+                <option value="offline">Offline</option>
+            </select>
+
+            <select id="expertYearFilter" onchange="renderExpertCharts()"></select>
+            <select id="expertMonthFilter" onchange="renderExpertCharts()"></select>
+        </div>
 
             <div class="chart-grid">
                 <div class="chart-card">
@@ -340,13 +355,22 @@
 
         <div class="section trend-section">
             <div class="trend-header">
-                <h3 style="margin:0;">Total Sales And Net Sales Trend</h3>
+            <h3 style="margin:0;">Total Sales And Net Sales Trend</h3>
+
+            <div class="trend-controls">
+                <select id="trendTypeFilter" class="trend-filter" onchange="renderSalesTrendChart()">
+                    <option value="">All Type</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+
                 <select id="trendYearFilter" class="trend-filter" onchange="renderSalesTrendChart()"></select>
             </div>
+        </div>
 
             <div class="trend-card">
                 <div class="trend-top">
-                    <div class="trend-title">Total sales over time</div>
+                    <div class="trend-title">Sales trend over time</div>
                     <div class="trend-total" id="trendGrandValue">₹ 0.00</div>
                 </div>
                 <div class="trend-wrap">
@@ -887,6 +911,7 @@ function renderExpertCharts() {
     const duration = document.getElementById("expertDurationFilter")?.value || "Top5";
     const selectedYear = document.getElementById("expertYearFilter")?.value || "";
     const selectedMonth = document.getElementById("expertMonthFilter")?.value || "";
+    const selectedType = document.getElementById("expertTypeFilter")?.value || "";
 
     const filtered = allData.filter(row => {
         const rowYear = getYear(row);
@@ -897,8 +922,11 @@ function renderExpertCharts() {
             rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
         }
 
+        const rowType = getType(row).trim().toLowerCase();
+
         return (!selectedYear || rowYear === selectedYear) &&
-               (!selectedMonth || rowMonth === selectedMonth);
+            (!selectedMonth || rowMonth === selectedMonth) &&
+            (!selectedType || rowType === selectedType);
     });
 
     const grouped = {};
@@ -960,10 +988,17 @@ function renderExpertCharts() {
 
 function renderSalesTrendChart() {
     const selectedYear = document.getElementById("trendYearFilter")?.value || "";
+    const selectedType = document.getElementById("trendTypeFilter")?.value || "";
 
     if (!selectedYear) return;
 
-    const yearData = allData.filter(row => getYear(row) === selectedYear);
+    const yearData = allData.filter(row => {
+    const rowYear = getYear(row);
+    const rowType = getType(row).trim().toLowerCase();
+
+    return (!selectedYear || rowYear === selectedYear) &&
+           (!selectedType || rowType === selectedType);
+});
 
     const monthly = {};
     monthOrder.forEach(month => {
@@ -1000,8 +1035,25 @@ function renderSalesTrendChart() {
     const totalSalesData = monthOrder.map(m => monthly[m].totalSales);
     const netSalesData = monthOrder.map(m => monthly[m].netSales);
 
-    const grandTotalSales = totalSalesData.reduce((sum, val) => sum + val, 0);
-    document.getElementById("trendGrandValue").innerText = formatCurrency(grandTotalSales);
+    let trendDisplayTotal = 0;
+
+    if (selectedType === "offline") {
+        trendDisplayTotal = totalSalesData.reduce((sum, val) => sum + val, 0);
+    } else if (selectedType === "online") {
+        trendDisplayTotal = netSalesData.reduce((sum, val) => sum + val, 0);
+    } else {
+        const offlineTotal = yearData
+            .filter(row => getType(row).trim().toLowerCase() === "offline")
+            .reduce((sum, row) => sum + getTotalSales(row), 0);
+
+        const onlineNetTotal = yearData
+            .filter(row => getType(row).trim().toLowerCase() !== "offline")
+            .reduce((sum, row) => sum + (getTotalSales(row) - getCommission(row)), 0);
+
+        trendDisplayTotal = onlineNetTotal + offlineTotal;
+    }
+
+    document.getElementById("trendGrandValue").innerText = formatCurrency(trendDisplayTotal);
 
     if (salesTrendChartInstance) {
         salesTrendChartInstance.destroy();

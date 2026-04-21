@@ -8,7 +8,7 @@
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            padding: 18px;
+            padding: 28px 22px;
             font-family: "Courier New", monospace;
             color: #3f7f9f;
             background: transparent;
@@ -19,6 +19,8 @@
             border-radius: 16px;
             padding: 24px;
             box-shadow: none;
+            max-width: 1620px;
+            margin: 0 auto;
         }
         h2 {
             margin: 0 0 8px;
@@ -66,7 +68,7 @@
         .cards {
             display: grid;
             grid-template-columns: repeat(4, minmax(220px, 1fr));
-            gap: 14px;
+            gap: 18px;
             margin-bottom: 22px;
         }
         .mini-card {
@@ -168,6 +170,7 @@
                 display: grid;
                 grid-template-columns: repeat(2, minmax(320px, 1fr));
                 gap: 16px;
+                align-items: start;
             }
 
             .chart-card {

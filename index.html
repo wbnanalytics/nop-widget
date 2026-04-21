@@ -3,6 +3,7 @@
 <head>
     <title>NOP Dashboard</title>
     <script src="https://static.zohocdn.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -134,6 +135,44 @@
         @media (max-width: 700px) {
             .filters-wrap, .cards { grid-template-columns: 1fr; }
         }
+    
+
+        .chart-section {
+                margin-top: 22px;
+            }
+
+            .chart-filter-bar {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                align-items: center;
+                margin-bottom: 14px;
+            }
+
+            .chart-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(320px, 1fr));
+                gap: 16px;
+            }
+
+            .chart-card {
+                background: #eef7fb;
+                border: 1px solid #d7e9f1;
+                border-radius: 14px;
+                padding: 16px;
+            }
+
+            .chart-card h4 {
+                margin: 0 0 14px;
+                font-size: 18px;
+                color: #215c78;
+            }
+
+            .chart-wrap {
+                position: relative;
+                height: 360px;
+            }
+
     </style>
 </head>
 <body>
@@ -171,6 +210,42 @@
             </div>
         </div>
 
+        <div class="section chart-section">
+            <h3>Expert Sales Charts</h3>
+
+            <div class="chart-filter-bar">
+                <select id="expertDurationFilter" onchange="renderExpertCharts()">
+                    <option value="Top5">Top5</option>
+                    <option value="Top10">Top10</option>
+                    <option value="Top20">Top20</option>
+                    <option value="Top30">Top30</option>
+                    <option value="Last5">Last5</option>
+                    <option value="Last10">Last10</option>
+                    <option value="Last20">Last20</option>
+                    <option value="Last50">Last50</option>
+                </select>
+
+                <select id="expertYearFilter" onchange="renderExpertCharts()"></select>
+                <select id="expertMonthFilter" onchange="renderExpertCharts()"></select>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h4>Top Experts</h4>
+                    <div class="chart-wrap">
+                        <canvas id="topExpertsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h4>Bottom Experts</h4>
+                    <div class="chart-wrap">
+                        <canvas id="bottomExpertsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="section">
             <h3>Nutritionist Summary</h3>
             <div id="nutritionistSummary" class="loading">Loading...</div>
@@ -188,6 +263,8 @@
 
     <script>
 let allData = [];
+let topExpertsChartInstance = null;
+let bottomExpertsChartInstance = null;
 
 const monthOrder = [
     "January","February","March","April","May","June",
@@ -284,6 +361,10 @@ function getType(row) {
 
 function getNutritionist(row) {
     return String(getField(row, ["Assigned Nutritionist", "Assigned_Nutritionist", "Nutritionist"])).trim();
+}
+
+function getExpert(row) {
+    return String(getField(row, ["Expert Name", "Expert", "Assigned Expert", "Assigned_Expert"])).trim();
 }
 
 function getDOS(row) {
@@ -387,9 +468,30 @@ function populateFilters() {
     fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
     fillDropdown("yearlyYearFilter", years, "Year");
 
+    const expertYearFilter = document.getElementById("expertYearFilter");
+    const expertMonthFilter = document.getElementById("expertMonthFilter");
+
+    if (expertYearFilter) {
+        expertYearFilter.innerHTML = `<option value="">All Year</option>`;
+        years.forEach(y => {
+            expertYearFilter.innerHTML += `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`;
+        });
+    }
+
+    if (expertMonthFilter) {
+        expertMonthFilter.innerHTML = `<option value="">All Month</option>`;
+        months.forEach(m => {
+            expertMonthFilter.innerHTML += `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`;
+        });
+    }
+
     if (years.length) {
         document.getElementById("yearFilter").value = "";
-    document.getElementById("yearlyYearFilter").value = years[years.length - 1];
+        document.getElementById("yearlyYearFilter").value = years[years.length - 1];
+
+        if (expertYearFilter) {
+            expertYearFilter.value = years[years.length - 1];
+        }
     }
 }
 
@@ -667,6 +769,81 @@ function renderYearlyTable(selectedYear) {
     container.innerHTML = html;
 }
 
+function renderExpertCharts() {
+    const duration = document.getElementById("expertDurationFilter")?.value || "Top5";
+    const selectedYear = document.getElementById("expertYearFilter")?.value || "";
+    const selectedMonth = document.getElementById("expertMonthFilter")?.value || "";
+
+    const filtered = allData.filter(row => {
+        const rowYear = getYear(row);
+
+        let rowMonth = getMonth(row);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0,3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        return (!selectedYear || rowYear === selectedYear) &&
+               (!selectedMonth || rowMonth === selectedMonth);
+    });
+
+    const grouped = {};
+
+    filtered.forEach(row => {
+        const expert = getExpert(row) || "Unassigned";
+        if (!grouped[expert]) grouped[expert] = 0;
+        grouped[expert] += getTotalSales(row);
+    });
+
+    const list = Object.keys(grouped).map(name => ({
+        name,
+        total: grouped[name]
+    }));
+
+    const desc = [...list].sort((a,b)=>b.total-a.total);
+    const asc = [...list].sort((a,b)=>a.total-b.total);
+
+    let limit = 5;
+    if (duration.includes("10")) limit = 10;
+    if (duration.includes("20")) limit = 20;
+    if (duration.includes("30")) limit = 30;
+    if (duration.includes("50")) limit = 50;
+
+    const topData = desc.slice(0, limit);
+    const bottomData = asc.slice(0, limit);
+
+    if (topExpertsChartInstance) topExpertsChartInstance.destroy();
+    if (bottomExpertsChartInstance) bottomExpertsChartInstance.destroy();
+
+    topExpertsChartInstance = new Chart(document.getElementById("topExpertsChart"), {
+        type: "bar",
+        data: {
+            labels: topData.map(x=>x.name),
+            datasets: [{
+                data: topData.map(x=>x.total)
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            plugins: { legend: { display:false } }
+        }
+    });
+
+    bottomExpertsChartInstance = new Chart(document.getElementById("bottomExpertsChart"), {
+        type: "bar",
+        data: {
+            labels: bottomData.map(x=>x.name),
+            datasets: [{
+                data: bottomData.map(x=>x.total)
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            plugins: { legend: { display:false } }
+        }
+    });
+}
+
 async function initDashboard() {
     try {
         document.getElementById("nutritionistSummary").innerHTML = `<div class="loading">Loading summary...</div>`;
@@ -676,6 +853,7 @@ async function initDashboard() {
         populateFilters();
         applyFilters();
         renderYearlyTableFromYearFilter();
+        renderExpertCharts();
     } catch (error) {
         console.log("ERROR:", error);
         document.getElementById("nutritionistSummary").innerHTML = `<div class="empty">Error loading dashboard.</div>`;
@@ -691,6 +869,7 @@ async function refreshDashboard() {
     populateFilters();
     applyFilters();
     renderYearlyTableFromYearFilter();
+    renderExpertCharts();
 }
 
 function convertTableForExcel(table) {

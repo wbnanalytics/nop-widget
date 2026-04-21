@@ -142,11 +142,26 @@
             }
 
             .chart-filter-bar {
-                display: flex;
+                display: grid;
+                grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) minmax(160px, 200px);
                 gap: 12px;
-                flex-wrap: wrap;
                 align-items: center;
                 margin-bottom: 14px;
+            }
+
+            .chart-filter-bar select {
+                width: 100%;
+                min-width: 0;
+            }
+
+            @media (max-width: 900px) {
+                .chart-filter-bar {
+                    grid-template-columns: 1fr;
+                }
+
+                .chart-grid {
+                    grid-template-columns: 1fr;
+                }
             }
 
             .chart-grid {
@@ -215,14 +230,14 @@
 
             <div class="chart-filter-bar">
                 <select id="expertDurationFilter" onchange="renderExpertCharts()">
-                    <option value="Top5">Top5</option>
-                    <option value="Top10">Top10</option>
-                    <option value="Top20">Top20</option>
-                    <option value="Top30">Top30</option>
-                    <option value="Last5">Last5</option>
-                    <option value="Last10">Last10</option>
-                    <option value="Last20">Last20</option>
-                    <option value="Last50">Last50</option>
+                    <option value="Top5">Top 5</option>
+                    <option value="Top10">Top 10</option>
+                    <option value="Top20">Top 20</option>
+                    <option value="Top30">Top 30</option>
+                    <option value="Last5">Last 5</option>
+                    <option value="Last10">Last 10</option>
+                    <option value="Last20">Last 20</option>
+                    <option value="Last50">Last 50</option>
                 </select>
 
                 <select id="expertYearFilter" onchange="renderExpertCharts()"></select>

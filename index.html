@@ -188,6 +188,81 @@
                 height: 360px;
             }
 
+            .section-divider {
+                border-top: 1px solid #cfe0e8;
+                margin: 26px 0;
+            }
+
+            .trend-section {
+                margin-top: 10px;
+            }
+
+            .trend-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-bottom: 14px;
+            }
+
+            .trend-filter {
+                width: 180px;
+                max-width: 180px;
+            }
+
+            .trend-card {
+                background: #ffffff;
+                border: 1px solid #d7e9f1;
+                border-radius: 18px;
+                padding: 18px 18px 10px;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+            }
+
+            .trend-top {
+                display: flex;
+                align-items: flex-end;
+                gap: 14px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+
+            .trend-title {
+                font-size: 18px;
+                font-weight: 700;
+                color: #3a3a3a;
+                border-bottom: 2px dashed #cfcfcf;
+                display: inline-block;
+                padding-bottom: 3px;
+            }
+
+            .trend-total {
+                font-size: 28px;
+                font-weight: 700;
+                color: #2f2f2f;
+                line-height: 1;
+            }
+
+            .trend-wrap {
+                position: relative;
+                height: 420px;
+            }
+
+            @media (max-width: 700px) {
+                .trend-filter {
+                    width: 100%;
+                    max-width: 100%;
+                }
+
+                .trend-total {
+                    font-size: 22px;
+                }
+
+                .trend-wrap {
+                    height: 320px;
+                }
+            }
+
     </style>
 </head>
 <body>
@@ -261,6 +336,27 @@
             </div>
         </div>
 
+        <div class="section-divider"></div>
+
+        <div class="section trend-section">
+            <div class="trend-header">
+                <h3 style="margin:0;">Total Sales And Net Sales Trend</h3>
+                <select id="trendYearFilter" class="trend-filter" onchange="renderSalesTrendChart()"></select>
+            </div>
+
+            <div class="trend-card">
+                <div class="trend-top">
+                    <div class="trend-title">Total sales over time</div>
+                    <div class="trend-total" id="trendGrandValue">₹ 0.00</div>
+                </div>
+                <div class="trend-wrap">
+                    <canvas id="salesTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
         <div class="section">
             <h3>Nutritionist Summary</h3>
             <div id="nutritionistSummary" class="loading">Loading...</div>
@@ -280,6 +376,7 @@
 let allData = [];
 let topExpertsChartInstance = null;
 let bottomExpertsChartInstance = null;
+let salesTrendChartInstance = null;
 
 const monthOrder = [
     "January","February","March","April","May","June",
@@ -482,6 +579,7 @@ function populateFilters() {
     fillDropdown("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "Week");
     fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
     fillDropdown("yearlyYearFilter", years, "Year");
+    fillDropdown("trendYearFilter", years, "Year");
 
     const expertYearFilter = document.getElementById("expertYearFilter");
     const expertMonthFilter = document.getElementById("expertMonthFilter");
@@ -501,13 +599,14 @@ function populateFilters() {
     }
 
     if (years.length) {
-        document.getElementById("yearFilter").value = "";
-        document.getElementById("yearlyYearFilter").value = years[years.length - 1];
+            document.getElementById("yearFilter").value = "";
+            document.getElementById("yearlyYearFilter").value = years[years.length - 1];
+            document.getElementById("trendYearFilter").value = years[years.length - 1];
 
-        if (expertYearFilter) {
-            expertYearFilter.value = years[years.length - 1];
+            if (expertYearFilter) {
+                expertYearFilter.value = years[years.length - 1];
+            }
         }
-    }
 }
 
 function applyFilters() {
@@ -859,6 +958,149 @@ function renderExpertCharts() {
     });
 }
 
+function renderSalesTrendChart() {
+    const selectedYear = document.getElementById("trendYearFilter")?.value || "";
+
+    if (!selectedYear) return;
+
+    const yearData = allData.filter(row => getYear(row) === selectedYear);
+
+    const monthly = {};
+    monthOrder.forEach(month => {
+        monthly[month] = {
+            totalSales: 0,
+            netSales: 0
+        };
+    });
+
+    yearData.forEach(row => {
+        let month = getMonth(row);
+
+        if (month) {
+            const m = month.toLowerCase().slice(0, 3);
+            month = monthOrder.find(x => x.toLowerCase().startsWith(m)) || "";
+        }
+
+        if (!month || !monthly[month]) return;
+
+        const total = getTotalSales(row);
+        const type = getType(row).toLowerCase();
+        const commission = getCommission(row);
+
+        if (type === "offline") {
+            monthly[month].totalSales += total;
+            monthly[month].netSales += total;
+        } else {
+            monthly[month].totalSales += total;
+            monthly[month].netSales += (total - commission);
+        }
+    });
+
+    const labels = monthOrder.map(m => m.slice(0, 3));
+    const totalSalesData = monthOrder.map(m => monthly[m].totalSales);
+    const netSalesData = monthOrder.map(m => monthly[m].netSales);
+
+    const grandTotalSales = totalSalesData.reduce((sum, val) => sum + val, 0);
+    document.getElementById("trendGrandValue").innerText = formatCurrency(grandTotalSales);
+
+    if (salesTrendChartInstance) {
+        salesTrendChartInstance.destroy();
+    }
+
+    salesTrendChartInstance = new Chart(document.getElementById("salesTrendChart"), {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: "Total Sales",
+                    data: totalSalesData,
+                    borderColor: "#cfeaf7",
+                    backgroundColor: "#cfeaf7",
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    fill: false
+                },
+                {
+                    label: "Net Sales",
+                    data: netSalesData,
+                    borderColor: "#67b7e3",
+                    backgroundColor: "#67b7e3",
+                    tension: 0.4,
+                    borderWidth: 3,
+                    borderDash: [6, 6],
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 10,
+                        color: "#6b7280",
+                        padding: 20,
+                        font: {
+                            size: 13
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: "#ffffff",
+                    titleColor: "#2f2f2f",
+                    bodyColor: "#4b5563",
+                    borderColor: "#d9e5ec",
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ": " + formatCurrency(context.raw);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: "#6b7280"
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: "#e9eef2"
+                    },
+                    ticks: {
+                        color: "#6b7280",
+                        callback: function(value) {
+                            if (value >= 10000000) return "₹" + (value / 10000000).toFixed(1) + "Cr";
+                            if (value >= 100000) return "₹" + (value / 100000).toFixed(1) + "L";
+                            if (value >= 1000) return "₹" + (value / 1000).toFixed(0) + "K";
+                            return "₹" + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 async function initDashboard() {
     try {
         document.getElementById("nutritionistSummary").innerHTML = `<div class="loading">Loading summary...</div>`;
@@ -869,6 +1111,7 @@ async function initDashboard() {
         applyFilters();
         renderYearlyTableFromYearFilter();
         renderExpertCharts();
+        renderSalesTrendChart();
     } catch (error) {
         console.log("ERROR:", error);
         document.getElementById("nutritionistSummary").innerHTML = `<div class="empty">Error loading dashboard.</div>`;
@@ -885,6 +1128,7 @@ async function refreshDashboard() {
     applyFilters();
     renderYearlyTableFromYearFilter();
     renderExpertCharts();
+    renderSalesTrendChart();
 }
 
 function convertTableForExcel(table) {

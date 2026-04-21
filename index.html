@@ -143,7 +143,7 @@
 
             .chart-filter-bar {
                 display: grid;
-                grid-template-columns: minmax(130px, 160px) minmax(130px, 160px) minmax(140px, 180px) minmax(140px, 180px);
+                grid-template-columns: minmax(130px, 160px) minmax(130px, 160px) minmax(130px, 160px) minmax(140px, 180px) minmax(140px, 180px);
                 gap: 12px;
                 align-items: center;
                 margin-bottom: 14px;
@@ -313,26 +313,31 @@
             <h3>Expert Sales Charts</h3>
 
             <div class="chart-filter-bar">
-            <select id="expertDurationFilter" onchange="renderExpertCharts()">
-                <option value="Top5">Top 5</option>
-                <option value="Top10">Top 10</option>
-                <option value="Top20">Top 20</option>
-                <option value="Top30">Top 30</option>
-                <option value="Last5">Last 5</option>
-                <option value="Last10">Last 10</option>
-                <option value="Last20">Last 20</option>
-                <option value="Last50">Last 50</option>
+            <select id="topExpertLimitFilter" onchange="renderExpertCharts()">
+                <option value="5">Top 5</option>
+                <option value="10">Top 10</option>
+                <option value="20">Top 20</option>
+                <option value="30">Top 30</option>
+                <option value="50">Top 50</option>
             </select>
 
-            <select id="expertTypeFilter" onchange="renderExpertCharts()">
-                <option value="">All Type</option>
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
+            <select id="bottomExpertLimitFilter" onchange="renderExpertCharts()">
+                <option value="5">Last 5</option>
+                <option value="10">Last 10</option>
+                <option value="20">Last 20</option>
+                <option value="30">Last 30</option>
+                <option value="50">Last 50</option>
             </select>
 
-            <select id="expertYearFilter" onchange="renderExpertCharts()"></select>
-            <select id="expertMonthFilter" onchange="renderExpertCharts()"></select>
-        </div>
+        <select id="expertTypeFilter" onchange="renderExpertCharts()">
+            <option value="">All Type</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+        </select>
+
+        <select id="expertYearFilter" onchange="renderExpertCharts()"></select>
+        <select id="expertMonthFilter" onchange="renderExpertCharts()"></select>
+    </div>
 
             <div class="chart-grid">
                 <div class="chart-card">
@@ -908,7 +913,8 @@ function renderYearlyTable(selectedYear) {
 }
 
 function renderExpertCharts() {
-    const duration = document.getElementById("expertDurationFilter")?.value || "Top5";
+    const topLimit = parseInt(document.getElementById("topExpertLimitFilter")?.value || "5", 10);
+    const bottomLimit = parseInt(document.getElementById("bottomExpertLimitFilter")?.value || "5", 10);
     const selectedYear = document.getElementById("expertYearFilter")?.value || "";
     const selectedMonth = document.getElementById("expertMonthFilter")?.value || "";
     const selectedType = document.getElementById("expertTypeFilter")?.value || "";
@@ -925,8 +931,8 @@ function renderExpertCharts() {
         const rowType = getType(row).trim().toLowerCase();
 
         return (!selectedYear || rowYear === selectedYear) &&
-            (!selectedMonth || rowMonth === selectedMonth) &&
-            (!selectedType || rowType === selectedType);
+               (!selectedMonth || rowMonth === selectedMonth) &&
+               (!selectedType || rowType === selectedType);
     });
 
     const grouped = {};
@@ -937,22 +943,20 @@ function renderExpertCharts() {
         grouped[expert] += getTotalSales(row);
     });
 
-    const list = Object.keys(grouped).map(name => ({
-        name,
-        total: grouped[name]
-    }));
+    const list = Object.keys(grouped)
+        .map(name => ({
+            name,
+            total: grouped[name]
+        }))
+        .filter(item => item.total > 0);
 
-    const desc = [...list].sort((a,b)=>b.total-a.total);
-    const asc = [...list].sort((a,b)=>a.total-b.total);
+    const topData = [...list]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, topLimit);
 
-    let limit = 5;
-    if (duration.includes("10")) limit = 10;
-    if (duration.includes("20")) limit = 20;
-    if (duration.includes("30")) limit = 30;
-    if (duration.includes("50")) limit = 50;
-
-    const topData = desc.slice(0, limit);
-    const bottomData = asc.slice(0, limit);
+    const bottomData = [...list]
+        .sort((a, b) => a.total - b.total)
+        .slice(0, bottomLimit);
 
     if (topExpertsChartInstance) topExpertsChartInstance.destroy();
     if (bottomExpertsChartInstance) bottomExpertsChartInstance.destroy();
@@ -960,28 +964,42 @@ function renderExpertCharts() {
     topExpertsChartInstance = new Chart(document.getElementById("topExpertsChart"), {
         type: "bar",
         data: {
-            labels: topData.map(x=>x.name),
+            labels: topData.map(x => x.name),
             datasets: [{
-                data: topData.map(x=>x.total)
+                data: topData.map(x => x.total),
+                backgroundColor: "#8ec5e8",
+                borderColor: "#8ec5e8",
+                borderWidth: 1
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             indexAxis: "y",
-            plugins: { legend: { display:false } }
+            plugins: {
+                legend: { display: false }
+            }
         }
     });
 
     bottomExpertsChartInstance = new Chart(document.getElementById("bottomExpertsChart"), {
         type: "bar",
         data: {
-            labels: bottomData.map(x=>x.name),
+            labels: bottomData.map(x => x.name),
             datasets: [{
-                data: bottomData.map(x=>x.total)
+                data: bottomData.map(x => x.total),
+                backgroundColor: "#8ec5e8",
+                borderColor: "#8ec5e8",
+                borderWidth: 1
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             indexAxis: "y",
-            plugins: { legend: { display:false } }
+            plugins: {
+                legend: { display: false }
+            }
         }
     });
 }

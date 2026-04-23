@@ -972,27 +972,54 @@ function renderExpertCharts() {
             labels: topData.map(x => x.name),
             datasets: [{
                 data: topData.map(x => x.total),
-                backgroundColor: "#8ec5e8",
-                borderColor: "#8ec5e8",
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
                 borderWidth: 1
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    right: 120
+                }
+            },
             indexAxis: "y",
             plugins: {
                 legend: { display: false },
                 datalabels: {
                     anchor: 'end',
                     align: 'right',
-                    color: '#000',
+                    offset: 6,
+                    clamp: true,
+                    clip: false,
+                    overflow: 'visible',
+                    color: '#215c78',
                     font: {
                         weight: 'bold',
                         size: 11
                     },
                     formatter: function(value) {
                         return formatPlain(value);
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: "#215c78"
+                    },
+                    grid: {
+                        color: "#d7e9f1"
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: "#215c78"
+                    },
+                    grid: {
+                        color: "#d7e9f1"
                     }
                 }
             }
@@ -1005,27 +1032,54 @@ function renderExpertCharts() {
             labels: bottomData.map(x => x.name),
             datasets: [{
                 data: bottomData.map(x => x.total),
-                backgroundColor: "#8ec5e8",
-                borderColor: "#8ec5e8",
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
                 borderWidth: 1
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    right: 120
+                }
+            },
             indexAxis: "y",
             plugins: {
                 legend: { display: false },
                 datalabels: {
-                    anchor: 'end',
-                    align: 'right',
-                    color: '#000',
-                    font: {
-                        weight: 'bold',
-                        size: 11
+                        anchor: 'end',
+                        align: 'right',
+                        offset: 6,
+                        clamp: true,
+                        clip: false,
+                        overflow: 'visible',
+                        color: '#215c78',
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        },
+                        formatter: function(value) {
+                            return formatPlain(value);
+                        }
+                    }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: "#215c78"
                     },
-                    formatter: function(value) {
-                        return formatPlain(value);
+                    grid: {
+                        color: "#d7e9f1"
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: "#215c78"
+                    },
+                    grid: {
+                        color: "#d7e9f1"
                     }
                 }
             }

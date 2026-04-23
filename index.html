@@ -4,6 +4,7 @@
     <title>NOP Dashboard</title>
     <script src="https://static.zohocdn.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -409,6 +410,7 @@ let allData = [];
 let topExpertsChartInstance = null;
 let bottomExpertsChartInstance = null;
 let salesTrendChartInstance = null;
+Chart.register(ChartDataLabels);
 
 const monthOrder = [
     "January","February","March","April","May","June",
@@ -980,7 +982,19 @@ function renderExpertCharts() {
             maintainAspectRatio: false,
             indexAxis: "y",
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'right',
+                    color: '#000',
+                    font: {
+                        weight: 'bold',
+                        size: 11
+                    },
+                    formatter: function(value) {
+                        return formatPlain(value);
+                    }
+                }
             }
         }
     });
@@ -1001,7 +1015,19 @@ function renderExpertCharts() {
             maintainAspectRatio: false,
             indexAxis: "y",
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'right',
+                    color: '#000',
+                    font: {
+                        weight: 'bold',
+                        size: 11
+                    },
+                    formatter: function(value) {
+                        return formatPlain(value);
+                    }
+                }
             }
         }
     });

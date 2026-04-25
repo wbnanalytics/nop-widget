@@ -95,6 +95,22 @@
             font-size: 20px;
             color: #14233c;
         }
+
+        .compact-table-wrap {
+            max-height: 420px;
+            overflow: auto;
+            border: 1px solid #e3eaf6;
+            border-radius: 14px;
+            background: #fff;
+        }
+
+        .affiliate-filter-bar {
+            display: grid;
+            grid-template-columns: 1.5fr 180px 180px;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
         .table-wrap {
             overflow-x: auto;
             border: 1px solid #e3eaf6;
@@ -440,6 +456,13 @@
 
         <div class="section">
             <h3>Products Purchased By Each Affiliate</h3>
+
+            <div class="affiliate-filter-bar">
+                <input type="text" id="affiliateSearchFilter" placeholder="Search expert name..." oninput="renderAffiliateProductTable()" />
+                <select id="affiliateYearFilter" onchange="renderAffiliateProductTable()"></select>
+                <select id="affiliateMonthFilter" onchange="renderAffiliateProductTable()"></select>
+            </div>
+
             <div id="affiliateProductTable" class="loading">Loading...</div>
         </div>
 
@@ -622,6 +645,10 @@ function getProductExpert(row) {
     return String(getField(row, ["Expert_Name", "Expert Name", "Expert"])).trim();
 }
 
+function getProductSalesMatch(orderId) {
+    return allData.find(row => String(getField(row, ["Order Id", "Order_Id"])).trim() === orderId);
+}
+
 async function fetchProductRecords() {
     let merged = [];
     let cursor = null;
@@ -704,6 +731,8 @@ function populateFilters() {
     fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
     fillDropdown("yearlyYearFilter", years, "Year");
     fillDropdown("trendYearFilter", years, "Year");
+    fillDropdown("affiliateYearFilter", years, "Year");
+    fillDropdown("affiliateMonthFilter", months, "Month");
 
     const expertYearFilter = document.getElementById("expertYearFilter");
     const expertMonthFilter = document.getElementById("expertMonthFilter");
@@ -1278,14 +1307,34 @@ function getProductChartOptions() {
 
 function renderAffiliateProductTable() {
     const container = document.getElementById("affiliateProductTable");
+    const searchText = document.getElementById("affiliateSearchFilter")?.value.trim().toLowerCase() || "";
+    const selectedYear = document.getElementById("affiliateYearFilter")?.value || "";
+    const selectedMonth = document.getElementById("affiliateMonthFilter")?.value || "";
+
     const grouped = {};
 
     productData.forEach(row => {
+        const orderId = getProductOrderId(row);
+        const salesRow = getProductSalesMatch(orderId);
+
+        if (!salesRow) return;
+
+        const year = getYear(salesRow);
+
+        let month = getMonth(salesRow);
+        if (month) {
+            const x = month.toLowerCase().slice(0,3);
+            month = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
         const expert = getProductExpert(row) || "Unassigned";
         const product = getProductName(row);
         const qty = getProductQty(row);
 
         if (!product) return;
+        if (selectedYear && year !== selectedYear) return;
+        if (selectedMonth && month !== selectedMonth) return;
+        if (searchText && !expert.toLowerCase().includes(searchText)) return;
 
         if (!grouped[expert]) grouped[expert] = {};
         if (!grouped[expert][product]) grouped[expert][product] = 0;
@@ -1301,7 +1350,7 @@ function renderAffiliateProductTable() {
     }
 
     let html = `
-        <div class="table-wrap">
+        <div class="compact-table-wrap">
             <table>
                 <thead>
                     <tr>
@@ -1315,10 +1364,7 @@ function renderAffiliateProductTable() {
 
     experts.forEach(expert => {
         const products = Object.keys(grouped[expert])
-            .map(product => ({
-                product,
-                qty: grouped[expert][product]
-            }))
+            .map(product => ({ product, qty: grouped[expert][product] }))
             .sort((a, b) => b.qty - a.qty);
 
         products.forEach(item => {
@@ -1624,6 +1670,9 @@ function convertTableForExcel(table) {
 function exportDashboardReport() {
     const nutritionTable = document.getElementById("nutritionistSummaryTable");
     const yearlyTable = document.getElementById("yearlySalesTable");
+    const affiliateTable = document.querySelector("#affiliateProductTable table");
+    const repeatTable = document.querySelector("#repeatProductTable table");
+
 
     if (!nutritionTable || !yearlyTable) {
         alert("Tables not ready for export.");
@@ -1725,6 +1774,11 @@ function exportDashboardReport() {
 
         <h3>Yearly Sales</h3>
         ${convertTableForExcel(yearlyTable)}
+        <h3>Products Purchased By Each Affiliate</h3>
+        ${affiliateTable ? convertTableForExcel(affiliateTable) : ""}
+
+        <h3>Highest Repeat Purchase Products</h3>
+        ${repeatTable ? convertTableForExcel(repeatTable) : ""}
     </body>
     </html>`;
 

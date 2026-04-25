@@ -401,13 +401,63 @@
             </div>
             <div id="expertYearlyTable" class="loading">Loading...</div>
         </div>
+
+        <div class="section-divider"></div>
+
+        <div class="section chart-section">
+            <h3>Product Purchase Reports</h3>
+
+            <div class="chart-filter-bar">
+                <select id="topProductLimitFilter" onchange="renderProductCharts()">
+                    <option value="5">Top 5</option>
+                    <option value="10" selected>Top 10</option>
+                    <option value="20">Top 20</option>
+                </select>
+
+                <select id="bottomProductLimitFilter" onchange="renderProductCharts()">
+                    <option value="5">Last 5</option>
+                    <option value="10" selected>Last 10</option>
+                    <option value="20">Last 20</option>
+                </select>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h4>Top Purchased Products</h4>
+                    <div class="chart-wrap">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h4>Least Purchased Products</h4>
+                    <div class="chart-wrap">
+                        <canvas id="bottomProductsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Products Purchased By Each Affiliate</h3>
+            <div id="affiliateProductTable" class="loading">Loading...</div>
+        </div>
+
+        <div class="section">
+            <h3>Highest Repeat Purchase Products</h3>
+            <div id="repeatProductTable" class="loading">Loading...</div>
+        </div>
+
     </div>
 
     <script>
 let allData = [];
+let productData = [];
 let topExpertsChartInstance = null;
 let bottomExpertsChartInstance = null;
 let salesTrendChartInstance = null;
+let topProductsChartInstance = null;
+let bottomProductsChartInstance = null;
 Chart.register(ChartDataLabels);
 
 const monthOrder = [
@@ -554,6 +604,48 @@ function getNetSales(row) {
 
 function getCommission(row) {
     return getNumber(getField(row, ["Commission", "Total Commission", "Total_Commission"]));
+}
+
+function getProductName(row) {
+    return String(getField(row, ["Product_Name", "Product Name"])).trim();
+}
+
+function getProductQty(row) {
+    return getNumber(getField(row, ["Quantity", "Qty"]));
+}
+
+function getProductOrderId(row) {
+    return String(getField(row, ["Order_Id", "Order Id", "Shopify_Name"])).trim();
+}
+
+function getProductExpert(row) {
+    return String(getField(row, ["Expert_Name", "Expert Name", "Expert"])).trim();
+}
+
+async function fetchProductRecords() {
+    let merged = [];
+    let cursor = null;
+
+    while (true) {
+        const config = {
+            app_name: "nop-sales-summary",
+            report_name: "Product_Summary_Report",
+            max_records: 1000
+        };
+
+        if (cursor) config.record_cursor = cursor;
+
+        const res = await ZOHO.CREATOR.DATA.getRecords(config);
+        merged = merged.concat(res.data || []);
+
+        if (res.record_cursor) {
+            cursor = res.record_cursor;
+        } else {
+            break;
+        }
+    }
+
+    return merged;
 }
 
 async function fetchAllRecords() {
@@ -1091,6 +1183,221 @@ function renderExpertCharts() {
     });
 }
 
+function renderProductCharts() {
+    const topLimit = parseInt(document.getElementById("topProductLimitFilter")?.value || "10", 10);
+    const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
+
+    const grouped = {};
+
+    productData.forEach(row => {
+        const product = getProductName(row);
+        const qty = getProductQty(row);
+
+        if (!product) return;
+        if (!grouped[product]) grouped[product] = 0;
+
+        grouped[product] += qty;
+    });
+
+    const list = Object.keys(grouped)
+        .map(name => ({ name, total: grouped[name] }))
+        .filter(x => x.total > 0);
+
+    const topData = [...list].sort((a, b) => b.total - a.total).slice(0, topLimit);
+    const bottomData = [...list].sort((a, b) => a.total - b.total).slice(0, bottomLimit);
+
+    if (topProductsChartInstance) topProductsChartInstance.destroy();
+    if (bottomProductsChartInstance) bottomProductsChartInstance.destroy();
+
+    topProductsChartInstance = new Chart(document.getElementById("topProductsChart"), {
+        type: "bar",
+        data: {
+            labels: topData.map(x => x.name),
+            datasets: [{
+                data: topData.map(x => x.total),
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
+                borderWidth: 1
+            }]
+        },
+        options: getProductChartOptions()
+    });
+
+    bottomProductsChartInstance = new Chart(document.getElementById("bottomProductsChart"), {
+        type: "bar",
+        data: {
+            labels: bottomData.map(x => x.name),
+            datasets: [{
+                data: bottomData.map(x => x.total),
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
+                borderWidth: 1
+            }]
+        },
+        options: getProductChartOptions()
+    });
+}
+
+function getProductChartOptions() {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: "y",
+        layout: {
+            padding: { right: 80 }
+        },
+        plugins: {
+            legend: { display: false },
+            datalabels: {
+                anchor: "end",
+                align: "right",
+                offset: 6,
+                color: "#215c78",
+                font: {
+                    weight: "bold",
+                    size: 11
+                },
+                formatter: function(value) {
+                    return value;
+                }
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: { color: "#215c78" },
+                grid: { color: "#d7e9f1" }
+            },
+            y: {
+                ticks: { color: "#215c78" },
+                grid: { color: "#d7e9f1" }
+            }
+        }
+    };
+}
+
+function renderAffiliateProductTable() {
+    const container = document.getElementById("affiliateProductTable");
+    const grouped = {};
+
+    productData.forEach(row => {
+        const expert = getProductExpert(row) || "Unassigned";
+        const product = getProductName(row);
+        const qty = getProductQty(row);
+
+        if (!product) return;
+
+        if (!grouped[expert]) grouped[expert] = {};
+        if (!grouped[expert][product]) grouped[expert][product] = 0;
+
+        grouped[expert][product] += qty;
+    });
+
+    const experts = Object.keys(grouped).sort();
+
+    if (!experts.length) {
+        container.innerHTML = `<div class="empty">No product data found.</div>`;
+        return;
+    }
+
+    let html = `
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Affiliate / Expert</th>
+                        <th>Product Name</th>
+                        <th class="number">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    experts.forEach(expert => {
+        const products = Object.keys(grouped[expert])
+            .map(product => ({
+                product,
+                qty: grouped[expert][product]
+            }))
+            .sort((a, b) => b.qty - a.qty);
+
+        products.forEach(item => {
+            html += `
+                <tr>
+                    <td>${escapeHtml(expert)}</td>
+                    <td>${escapeHtml(item.product)}</td>
+                    <td class="number">${item.qty}</td>
+                </tr>
+            `;
+        });
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function renderRepeatProductTable() {
+    const container = document.getElementById("repeatProductTable");
+    const grouped = {};
+
+    productData.forEach(row => {
+        const product = getProductName(row);
+        const orderId = getProductOrderId(row);
+
+        if (!product || !orderId) return;
+
+        if (!grouped[product]) grouped[product] = new Set();
+        grouped[product].add(orderId);
+    });
+
+    const list = Object.keys(grouped)
+        .map(product => ({
+            product,
+            repeatOrders: grouped[product].size
+        }))
+        .sort((a, b) => b.repeatOrders - a.repeatOrders)
+        .slice(0, 20);
+
+    if (!list.length) {
+        container.innerHTML = `<div class="empty">No repeat product data found.</div>`;
+        return;
+    }
+
+    let html = `
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                        <th class="number">Repeat Order Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    list.forEach(item => {
+        html += `
+            <tr>
+                <td>${escapeHtml(item.product)}</td>
+                <td class="number">${item.repeatOrders}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
 function renderSalesTrendChart() {
     const selectedYear = document.getElementById("trendYearFilter")?.value || "";
     const selectedType = document.getElementById("trendTypeFilter")?.value || "";
@@ -1265,11 +1572,15 @@ async function initDashboard() {
         document.getElementById("expertYearlyTable").innerHTML = `<div class="loading">Loading yearly table...</div>`;
 
         allData = await fetchAllRecords();
+        productData = await fetchProductRecords();
         populateFilters();
         applyFilters();
         renderYearlyTableFromYearFilter();
         renderExpertCharts();
         renderSalesTrendChart();
+        renderProductCharts();
+        renderAffiliateProductTable();
+        renderRepeatProductTable();
     } catch (error) {
         console.log("ERROR:", error);
         document.getElementById("nutritionistSummary").innerHTML = `<div class="empty">Error loading dashboard.</div>`;
@@ -1282,11 +1593,15 @@ async function refreshDashboard() {
     document.getElementById("expertYearlyTable").innerHTML = `<div class="loading">Refreshing yearly table...</div>`;
 
     allData = await fetchAllRecords();
+    productData = await fetchProductRecords();  
     populateFilters();
     applyFilters();
     renderYearlyTableFromYearFilter();
     renderExpertCharts();
     renderSalesTrendChart();
+    renderProductCharts();
+    renderAffiliateProductTable();
+    renderRepeatProductTable();
 }
 
 function convertTableForExcel(table) {

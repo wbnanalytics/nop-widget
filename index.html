@@ -106,7 +106,7 @@
 
         .affiliate-filter-bar {
             display: grid;
-            grid-template-columns: 1.5fr 180px 180px;
+            grid-template-columns: 1.5fr 180px 180px 110px;
             gap: 12px;
             margin-bottom: 12px;
         }
@@ -329,6 +329,13 @@
 
         <div class="section-divider"></div>
 
+        <div class="section">
+            <h3>Nutritionist Summary</h3>
+            <div id="nutritionistSummary" class="loading">Loading...</div>
+        </div>
+
+        <div class="section-divider"></div>
+
         <div class="section chart-section">
             <h3>Expert Sales Charts</h3>
 
@@ -404,10 +411,6 @@
 
         <div class="section-divider"></div>
 
-        <div class="section">
-            <h3>Nutritionist Summary</h3>
-            <div id="nutritionistSummary" class="loading">Loading...</div>
-        </div>
 
         <div class="section">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
@@ -435,6 +438,10 @@
                     <option value="10" selected>Last 10</option>
                     <option value="20">Last 20</option>
                 </select>
+
+                <select id="productYearFilter" onchange="renderProductCharts()"></select>
+                <select id="productMonthFilter" onchange="renderProductCharts()"></select>
+
             </div>
 
             <div class="chart-grid">
@@ -458,9 +465,10 @@
             <h3>Products Purchased By Each Affiliate</h3>
 
             <div class="affiliate-filter-bar">
-                <input type="text" id="affiliateSearchFilter" placeholder="Search expert name..." oninput="renderAffiliateProductTable()" />
+                <input type="text" id="affiliateSearchFilter" placeholder="Search expert name..." onchange="renderAffiliateProductTable()" />
                 <select id="affiliateYearFilter" onchange="renderAffiliateProductTable()"></select>
                 <select id="affiliateMonthFilter" onchange="renderAffiliateProductTable()"></select>
+                <button type="button" class="action-btn" onclick="resetAffiliateFilters()">Reset</button>
             </div>
 
             <div id="affiliateProductTable" class="loading">Loading...</div>
@@ -733,6 +741,8 @@ function populateFilters() {
     fillDropdown("trendYearFilter", years, "Year");
     fillDropdown("affiliateYearFilter", years, "Year");
     fillDropdown("affiliateMonthFilter", months, "Month");
+    fillDropdown("productYearFilter", years, "Year");
+    fillDropdown("productMonthFilter", months, "Month");
 
     const expertYearFilter = document.getElementById("expertYearFilter");
     const expertMonthFilter = document.getElementById("expertMonthFilter");
@@ -1215,10 +1225,28 @@ function renderExpertCharts() {
 function renderProductCharts() {
     const topLimit = parseInt(document.getElementById("topProductLimitFilter")?.value || "10", 10);
     const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
+    const selectedYear = document.getElementById("productYearFilter")?.value || "";
+    const selectedMonth = document.getElementById("productMonthFilter")?.value || "";
 
     const grouped = {};
 
     productData.forEach(row => {
+        const orderId = getProductOrderId(row);
+        const salesRow = getProductSalesMatch(orderId);
+
+        if (!salesRow) return;
+
+        const year = getYear(salesRow);
+
+        let month = getMonth(salesRow);
+        if (month) {
+            const x = month.toLowerCase().slice(0, 3);
+            month = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        if (selectedYear && year !== selectedYear) return;
+        if (selectedMonth && month !== selectedMonth) return;
+
         const product = getProductName(row);
         const qty = getProductQty(row);
 
@@ -1267,6 +1295,7 @@ function renderProductCharts() {
     });
 }
 
+
 function getProductChartOptions() {
     return {
         responsive: true,
@@ -1303,6 +1332,13 @@ function getProductChartOptions() {
             }
         }
     };
+}
+
+function resetAffiliateFilters() {
+    document.getElementById("affiliateSearchFilter").value = "";
+    document.getElementById("affiliateYearFilter").value = "";
+    document.getElementById("affiliateMonthFilter").value = "";
+    renderAffiliateProductTable();
 }
 
 function renderAffiliateProductTable() {
@@ -1635,11 +1671,28 @@ async function initDashboard() {
 }
 
 async function refreshDashboard() {
-    document.getElementById("nutritionistSummary").innerHTML = `<div class="loading">Refreshing summary...</div>`;
-    document.getElementById("expertYearlyTable").innerHTML = `<div class="loading">Refreshing yearly table...</div>`;
+    document.getElementById("typeFilter").value = "";
+    document.getElementById("yearFilter").value = "";
+    document.getElementById("monthFilter").value = "";
+    document.getElementById("weekFilter").value = "";
+    document.getElementById("dateFilter").value = "";
+    document.getElementById("nutritionistFilter").value = "";
 
-    allData = await fetchAllRecords();
-    productData = await fetchProductRecords();  
+    document.getElementById("topExpertLimitFilter").value = "5";
+    document.getElementById("bottomExpertLimitFilter").value = "5";
+    document.getElementById("expertTypeFilter").value = "";
+    document.getElementById("expertMonthFilter").value = "";
+
+    document.getElementById("topProductLimitFilter").value = "10";
+    document.getElementById("bottomProductLimitFilter").value = "10";
+
+    if (document.getElementById("productYearFilter")) document.getElementById("productYearFilter").value = "";
+    if (document.getElementById("productMonthFilter")) document.getElementById("productMonthFilter").value = "";
+
+    if (document.getElementById("affiliateSearchFilter")) document.getElementById("affiliateSearchFilter").value = "";
+    if (document.getElementById("affiliateYearFilter")) document.getElementById("affiliateYearFilter").value = "";
+    if (document.getElementById("affiliateMonthFilter")) document.getElementById("affiliateMonthFilter").value = "";
+
     populateFilters();
     applyFilters();
     renderYearlyTableFromYearFilter();

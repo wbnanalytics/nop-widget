@@ -111,10 +111,46 @@
             margin-bottom: 12px;
         }
 
-        .affiliate-filter-bar select[multiple] {
-            height: 44px;
-            overflow: auto;
-        }
+        .multi-filter {
+    position: relative;
+}
+
+    .multi-filter-btn {
+        width: 100%;
+        height: 44px;
+        padding: 10px 12px;
+        border: 1px solid #cfd8e6;
+        border-radius: 10px;
+        background: #fff;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .multi-filter-menu {
+        display: none;
+        position: absolute;
+        z-index: 9999;
+        top: 48px;
+        left: 0;
+        width: 280px;
+        max-height: 280px;
+        overflow: auto;
+        background: #fff;
+        border: 1px solid #cfd8e6;
+        border-radius: 10px;
+        padding: 10px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    }
+
+    .multi-filter.open .multi-filter-menu {
+        display: block;
+    }
+
+    .multi-filter-menu label {
+        display: block;
+        padding: 6px;
+        color: #215c78;
+    }
 
         .table-wrap {
             overflow-x: auto;
@@ -304,11 +340,25 @@
 
         <div class="filters-wrap">
             <select id="typeFilter" onchange="applyFilters()"></select>
-            <select id="yearFilter" onchange="applyFilters()"></select>
-            <select id="monthFilter" onchange="applyFilters()"></select>
-            <select id="weekFilter" onchange="applyFilters()"></select>
+            <div class="multi-filter" id="yearBox">
+                <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('yearBox')">All Year</button>
+                <div class="multi-filter-menu" id="yearFilter"></div>
+            </div>
+
+            <div class="multi-filter" id="monthBox">
+                <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('monthBox')">All Month</button>
+                <div class="multi-filter-menu" id="monthFilter"></div>
+            </div>
+
+            <div class="multi-filter" id="weekBox">
+                <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('weekBox')">All Week</button>
+                <div class="multi-filter-menu" id="weekFilter"></div>
+            </div>
             <input type="date" id="dateFilter" onchange="applyFilters()" />
-            <select id="nutritionistFilter" onchange="applyFilters()"></select>
+            <div class="multi-filter" id="nutritionistBox">
+                <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('nutritionistBox')">All Nutritionist</button>
+                <div class="multi-filter-menu" id="nutritionistFilter"></div>
+            </div>
             <button type="button" class="action-btn" onclick="refreshDashboard()">Refresh</button>
             <button type="button" class="action-btn" onclick="exportDashboardReport()">Export</button>
         </div>
@@ -470,7 +520,12 @@
             <h3>Products Purchased By Each Affiliate</h3>
 
             <div class="affiliate-filter-bar">
-                <select id="affiliateExpertFilter" multiple onchange="renderAffiliateProductTable()"></select>
+                <div class="multi-filter" id="affiliateExpertBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('affiliateExpertBox')">
+                        Select Experts
+                    </button>
+                    <div class="multi-filter-menu" id="affiliateExpertFilter"></div>
+                </div>
                 <select id="affiliateYearFilter" onchange="renderAffiliateProductTable()"></select>
                 <select id="affiliateMonthFilter" onchange="renderAffiliateProductTable()"></select>
                 <button type="button" class="action-btn" onclick="resetAffiliateFilters()">Reset</button>
@@ -672,10 +727,26 @@ function getProductSalesMatch(orderId) {
     return salesOrderMap[orderId] || null;
 }
 
+function toggleMultiFilter(id) {
+    document.getElementById(id).classList.toggle("open");
+}
+
 function getSelectedMultiValues(id) {
+    return Array.from(document.querySelectorAll(`#${id} input:checked`)).map(x => x.value);
+}
+
+function fillCheckboxFilter(id, values, renderFn) {
     const el = document.getElementById(id);
-    if (!el) return [];
-    return Array.from(el.selectedOptions).map(o => o.value);
+    el.innerHTML = "";
+
+    values.forEach(v => {
+        el.innerHTML += `
+            <label>
+                <input type="checkbox" value="${escapeHtml(v)}" onchange="${renderFn}()">
+                ${escapeHtml(v)}
+            </label>
+        `;
+    });
 }
 
 async function fetchProductRecords() {
@@ -754,10 +825,10 @@ function populateFilters() {
     const nutritionists = [...new Set(allData.map(r => getNutritionist(r).trim()).filter(v => v !== ""))].sort();
 
     fillDropdown("typeFilter", types, "Type");
-    fillDropdown("yearFilter", years, "Year");
-    fillDropdown("monthFilter", months, "Month");
-    fillDropdown("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "Week");
-    fillDropdown("nutritionistFilter", nutritionists, "Nutritionist");
+    fillCheckboxFilter("yearFilter", years, "applyFilters");
+    fillCheckboxFilter("monthFilter", months, "applyFilters");
+    fillCheckboxFilter("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "applyFilters");
+    fillCheckboxFilter("nutritionistFilter", nutritionists, "applyFilters");
     fillDropdown("yearlyYearFilter", years, "Year");
     fillDropdown("trendYearFilter", years, "Year");
     fillDropdown("affiliateYearFilter", years, "Year");
@@ -766,10 +837,7 @@ function populateFilters() {
     const affiliateExpertFilter = document.getElementById("affiliateExpertFilter");
 
     if (affiliateExpertFilter) {
-        affiliateExpertFilter.innerHTML = "";
-        affiliateExperts.forEach(name => {
-            affiliateExpertFilter.innerHTML += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
-        });
+        fillCheckboxFilter("affiliateExpertFilter", affiliateExperts, "renderAffiliateProductTable");
     }
     fillDropdown("productYearFilter", years, "Year");
     fillDropdown("productMonthFilter", months, "Month");
@@ -804,11 +872,12 @@ function populateFilters() {
 
 function applyFilters() {
     const type = document.getElementById("typeFilter").value.trim().toLowerCase();
-    const year = document.getElementById("yearFilter").value;
-    const month = document.getElementById("monthFilter").value;
-    const week = document.getElementById("weekFilter").value;
+    
+    const years = getSelectedMultiValues("yearFilter");
+    const months = getSelectedMultiValues("monthFilter");
+    const weeks = getSelectedMultiValues("weekFilter");
     const date = document.getElementById("dateFilter").value;
-    const nutritionist = document.getElementById("nutritionistFilter").value;
+    const nutritionists = getSelectedMultiValues("nutritionistFilter");
 
     const filtered = allData.filter(row => {
     const rowType = getType(row).trim().toLowerCase();
@@ -825,12 +894,11 @@ function applyFilters() {
     const rowNutritionist = getNutritionist(row).trim();
 
     return (!type || rowType === type) &&
-           (!year || rowYear === year) &&
-           (!month || rowMonth === month) &&
-           (!week || rowWeek === week) &&
-           (!date || rowDate === date) &&
-           (!nutritionist || rowNutritionist === nutritionist);
-});
+           (!years.length || years.includes(rowYear)) &&
+            (!months.length || months.includes(rowMonth)) &&
+            (!weeks.length || weeks.includes(rowWeek)) &&
+            (!nutritionists.length || nutritionists.includes(rowNutritionist));
+        });
 
     renderTopCards(filtered);
     renderNutritionistSummary(filtered);
@@ -1365,7 +1433,7 @@ function getProductChartOptions() {
 }
 
 function resetAffiliateFilters() {
-    Array.from(document.getElementById("affiliateExpertFilter").options).forEach(o => o.selected = false);
+    document.querySelectorAll("#affiliateExpertFilter input").forEach(x => x.checked = false);
     document.getElementById("affiliateYearFilter").value = "";
     document.getElementById("affiliateMonthFilter").value = "";
     renderAffiliateProductTable();
@@ -1473,7 +1541,7 @@ function renderRepeatProductTable() {
             repeatOrders: grouped[product].size
         }))
         .sort((a, b) => b.repeatOrders - a.repeatOrders)
-        .slice(0, 20);
+        .slice(0, 10);
 
     if (!list.length) {
         container.innerHTML = `<div class="empty">No repeat product data found.</div>`;
@@ -1481,7 +1549,7 @@ function renderRepeatProductTable() {
     }
 
     let html = `
-        <div class="table-wrap">
+        <div class="compact-table-wrap">
             <table>
                 <thead>
                     <tr>
@@ -1721,7 +1789,7 @@ async function refreshDashboard() {
     if (document.getElementById("productMonthFilter")) document.getElementById("productMonthFilter").value = "";
 
     if (document.getElementById("affiliateExpertFilter")) {
-        Array.from(document.getElementById("affiliateExpertFilter").options).forEach(o => o.selected = false);
+        document.querySelectorAll("#affiliateExpertFilter input").forEach(x => x.checked = false);
     }
     if (document.getElementById("affiliateYearFilter")) document.getElementById("affiliateYearFilter").value = "";
     if (document.getElementById("affiliateMonthFilter")) document.getElementById("affiliateMonthFilter").value = "";

@@ -872,7 +872,7 @@ function populateFilters() {
 
 function applyFilters() {
     const type = document.getElementById("typeFilter").value.trim().toLowerCase();
-    
+
     const years = getSelectedMultiValues("yearFilter");
     const months = getSelectedMultiValues("monthFilter");
     const weeks = getSelectedMultiValues("weekFilter");
@@ -880,25 +880,26 @@ function applyFilters() {
     const nutritionists = getSelectedMultiValues("nutritionistFilter");
 
     const filtered = allData.filter(row => {
-    const rowType = getType(row).trim().toLowerCase();
-    const rowYear = getYear(row);
+        const rowType = getType(row).trim().toLowerCase();
+        const rowYear = getYear(row);
 
-    let rowMonth = getMonth(row);
-    if (rowMonth) {
-        const x = rowMonth.toLowerCase().slice(0,3);
-        rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
-    }
+        let rowMonth = getMonth(row);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0,3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
 
-    const rowWeek = getWeek(row);
-    const rowDate = getISODate(row);
-    const rowNutritionist = getNutritionist(row).trim();
+        const rowWeek = getWeek(row);
+        const rowDate = getISODate(row);
+        const rowNutritionist = getNutritionist(row).trim();
 
-    return (!type || rowType === type) &&
-           (!years.length || years.includes(rowYear)) &&
-            (!months.length || months.includes(rowMonth)) &&
-            (!weeks.length || weeks.includes(rowWeek)) &&
-            (!nutritionists.length || nutritionists.includes(rowNutritionist));
-        });
+        return (!type || rowType === type) &&
+               (!years.length || years.includes(rowYear)) &&
+               (!months.length || months.includes(rowMonth)) &&
+               (!weeks.length || weeks.includes(rowWeek)) &&
+               (!date || rowDate === date) &&
+               (!nutritionists.length || nutritionists.includes(rowNutritionist));
+    });
 
     renderTopCards(filtered);
     renderNutritionistSummary(filtered);
@@ -1540,8 +1541,7 @@ function renderRepeatProductTable() {
             product,
             repeatOrders: grouped[product].size
         }))
-        .sort((a, b) => b.repeatOrders - a.repeatOrders)
-        .slice(0, 10);
+        .sort((a, b) => b.repeatOrders - a.repeatOrders);
 
     if (!list.length) {
         container.innerHTML = `<div class="empty">No repeat product data found.</div>`;
@@ -1771,11 +1771,11 @@ async function initDashboard() {
 
 async function refreshDashboard() {
     document.getElementById("typeFilter").value = "";
-    document.getElementById("yearFilter").value = "";
-    document.getElementById("monthFilter").value = "";
-    document.getElementById("weekFilter").value = "";
+    document.querySelectorAll("#yearFilter input").forEach(x => x.checked = false);
+    document.querySelectorAll("#monthFilter input").forEach(x => x.checked = false);
+    document.querySelectorAll("#weekFilter input").forEach(x => x.checked = false);
     document.getElementById("dateFilter").value = "";
-    document.getElementById("nutritionistFilter").value = "";
+    document.querySelectorAll("#nutritionistFilter input").forEach(x => x.checked = false);
 
     document.getElementById("topExpertLimitFilter").value = "5";
     document.getElementById("bottomExpertLimitFilter").value = "5";

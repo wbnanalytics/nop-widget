@@ -41,7 +41,7 @@
             overflow-x: auto;      /* enables scroll if needed */
         }
         
-        select, input[type="date"] {
+        select, input[type="date"], select[multiple] {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #cfd8e6;
@@ -109,6 +109,11 @@
             grid-template-columns: 1.5fr 180px 180px 110px;
             gap: 12px;
             margin-bottom: 12px;
+        }
+
+        .affiliate-filter-bar select[multiple] {
+            height: 44px;
+            overflow: auto;
         }
 
         .table-wrap {
@@ -465,7 +470,7 @@
             <h3>Products Purchased By Each Affiliate</h3>
 
             <div class="affiliate-filter-bar">
-                <input type="text" id="affiliateSearchFilter" placeholder="Search expert name..." onchange="renderAffiliateProductTable()" />
+                <select id="affiliateExpertFilter" multiple onchange="renderAffiliateProductTable()"></select>
                 <select id="affiliateYearFilter" onchange="renderAffiliateProductTable()"></select>
                 <select id="affiliateMonthFilter" onchange="renderAffiliateProductTable()"></select>
                 <button type="button" class="action-btn" onclick="resetAffiliateFilters()">Reset</button>
@@ -484,6 +489,7 @@
     <script>
 let allData = [];
 let productData = [];
+let salesOrderMap = {};
 let topExpertsChartInstance = null;
 let bottomExpertsChartInstance = null;
 let salesTrendChartInstance = null;
@@ -653,8 +659,23 @@ function getProductExpert(row) {
     return String(getField(row, ["Expert_Name", "Expert Name", "Expert"])).trim();
 }
 
+function buildSalesOrderMap() {
+    salesOrderMap = {};
+
+    allData.forEach(row => {
+        const orderId = String(getField(row, ["Order Id", "Order_Id"])).trim();
+        if (orderId) salesOrderMap[orderId] = row;
+    });
+}
+
 function getProductSalesMatch(orderId) {
-    return allData.find(row => String(getField(row, ["Order Id", "Order_Id"])).trim() === orderId);
+    return salesOrderMap[orderId] || null;
+}
+
+function getSelectedMultiValues(id) {
+    const el = document.getElementById(id);
+    if (!el) return [];
+    return Array.from(el.selectedOptions).map(o => o.value);
 }
 
 async function fetchProductRecords() {
@@ -741,6 +762,15 @@ function populateFilters() {
     fillDropdown("trendYearFilter", years, "Year");
     fillDropdown("affiliateYearFilter", years, "Year");
     fillDropdown("affiliateMonthFilter", months, "Month");
+    const affiliateExperts = [...new Set(productData.map(r => getProductExpert(r)).filter(v => v !== ""))].sort();
+    const affiliateExpertFilter = document.getElementById("affiliateExpertFilter");
+
+    if (affiliateExpertFilter) {
+        affiliateExpertFilter.innerHTML = "";
+        affiliateExperts.forEach(name => {
+            affiliateExpertFilter.innerHTML += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+        });
+    }
     fillDropdown("productYearFilter", years, "Year");
     fillDropdown("productMonthFilter", months, "Month");
 
@@ -1335,7 +1365,7 @@ function getProductChartOptions() {
 }
 
 function resetAffiliateFilters() {
-    document.getElementById("affiliateSearchFilter").value = "";
+    Array.from(document.getElementById("affiliateExpertFilter").options).forEach(o => o.selected = false);
     document.getElementById("affiliateYearFilter").value = "";
     document.getElementById("affiliateMonthFilter").value = "";
     renderAffiliateProductTable();
@@ -1343,7 +1373,7 @@ function resetAffiliateFilters() {
 
 function renderAffiliateProductTable() {
     const container = document.getElementById("affiliateProductTable");
-    const searchText = document.getElementById("affiliateSearchFilter")?.value.trim().toLowerCase() || "";
+    const selectedExperts = getSelectedMultiValues("affiliateExpertFilter");
     const selectedYear = document.getElementById("affiliateYearFilter")?.value || "";
     const selectedMonth = document.getElementById("affiliateMonthFilter")?.value || "";
 
@@ -1370,7 +1400,7 @@ function renderAffiliateProductTable() {
         if (!product) return;
         if (selectedYear && year !== selectedYear) return;
         if (selectedMonth && month !== selectedMonth) return;
-        if (searchText && !expert.toLowerCase().includes(searchText)) return;
+        if (selectedExperts.length && !selectedExperts.includes(expert)) return;
 
         if (!grouped[expert]) grouped[expert] = {};
         if (!grouped[expert][product]) grouped[expert][product] = 0;
@@ -1655,6 +1685,7 @@ async function initDashboard() {
 
         allData = await fetchAllRecords();
         productData = await fetchProductRecords();
+        buildSalesOrderMap();
         populateFilters();
         applyFilters();
         renderYearlyTableFromYearFilter();
@@ -1689,7 +1720,9 @@ async function refreshDashboard() {
     if (document.getElementById("productYearFilter")) document.getElementById("productYearFilter").value = "";
     if (document.getElementById("productMonthFilter")) document.getElementById("productMonthFilter").value = "";
 
-    if (document.getElementById("affiliateSearchFilter")) document.getElementById("affiliateSearchFilter").value = "";
+    if (document.getElementById("affiliateExpertFilter")) {
+        Array.from(document.getElementById("affiliateExpertFilter").options).forEach(o => o.selected = false);
+    }
     if (document.getElementById("affiliateYearFilter")) document.getElementById("affiliateYearFilter").value = "";
     if (document.getElementById("affiliateMonthFilter")) document.getElementById("affiliateMonthFilter").value = "";
 

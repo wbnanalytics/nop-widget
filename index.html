@@ -34,11 +34,11 @@
             font-size: 14px;
         }
         .filters-wrap {
-            display: flex;
-            flex-wrap: nowrap;     /* ❗ prevents line break */
+            display: grid;
+            grid-template-columns: minmax(190px, 1.4fr) repeat(4, minmax(118px, 0.7fr)) minmax(150px, 0.9fr) minmax(105px, 0.5fr) minmax(105px, 0.5fr);
             gap: 12px;
             margin-bottom: 24px;
-            overflow-x: auto;      /* enables scroll if needed */
+            align-items: start;
         }
         
         select, input[type="date"], select[multiple] {
@@ -106,24 +106,43 @@
 
         .affiliate-filter-bar {
             display: grid;
-            grid-template-columns: 1.5fr 180px 180px 110px;
+            grid-template-columns: minmax(240px, 360px) minmax(150px, 180px) minmax(150px, 180px) 110px;
             gap: 12px;
             margin-bottom: 12px;
+            align-items: start;
         }
 
         .multi-filter {
-    position: relative;
-}
+            position: relative;
+            width: 100%;
+        }
 
     .multi-filter-btn {
         width: 100%;
-        height: 44px;
-        padding: 10px 12px;
+        min-height: 44px;
+        padding: 10px 34px 10px 12px;
         border: 1px solid #cfd8e6;
         border-radius: 10px;
         background: #fff;
         text-align: left;
         cursor: pointer;
+        color: #111827;
+        font-size: 14px;
+        line-height: 18px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position: relative;
+    }
+
+    .multi-filter-btn::after {
+        content: "▾";
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #215c78;
+        font-size: 12px;
     }
 
     .multi-filter-menu {
@@ -132,14 +151,15 @@
         z-index: 9999;
         top: 48px;
         left: 0;
-        width: 280px;
-        max-height: 280px;
-        overflow: auto;
+        width: 100%;
+        min-width: 180px;
+        max-height: 260px;
+        overflow-y: auto;
         background: #fff;
         border: 1px solid #cfd8e6;
         border-radius: 10px;
-        padding: 10px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+        padding: 8px;
+        box-shadow: 0 8px 24px rgba(33, 92, 120, 0.16);
     }
 
     .multi-filter.open .multi-filter-menu {
@@ -147,9 +167,36 @@
     }
 
     .multi-filter-menu label {
-        display: block;
-        padding: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 6px;
         color: #215c78;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: 7px;
+    }
+
+    .multi-filter-menu label:hover {
+        background: #eef7fb;
+    }
+
+    .multi-filter-menu input {
+        margin: 0;
+    }
+
+    .filter-reset-mini {
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid #e5edf4;
+        background: #fff;
+        color: #215c78;
+        font-weight: 700;
+        text-align: left;
+        padding: 6px 6px 8px;
+        margin-bottom: 4px;
+        cursor: pointer;
+        font-family: "Courier New", monospace;
     }
 
         .table-wrap {
@@ -203,9 +250,9 @@
 
             .chart-filter-bar {
                 display: grid;
-                grid-template-columns: minmax(130px, 160px) minmax(130px, 160px) minmax(130px, 160px) minmax(140px, 180px) minmax(140px, 180px);
+                grid-template-columns: repeat(5, minmax(140px, 180px));
                 gap: 12px;
-                align-items: center;
+                align-items: start;
                 margin-bottom: 14px;
             }
 
@@ -331,6 +378,18 @@
                 }
             }
 
+            .section-filter-bar {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                align-items: start;
+                margin-bottom: 12px;
+            }
+
+            .section-filter-bar .multi-filter {
+                max-width: 180px;
+            }
+
     </style>
 </head>
 <body>
@@ -415,8 +474,14 @@
             <option value="offline">Offline</option>
         </select>
 
-        <select id="expertYearFilter" onchange="renderExpertCharts()"></select>
-        <select id="expertMonthFilter" onchange="renderExpertCharts()"></select>
+        <div class="multi-filter" id="expertYearBox">
+            <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('expertYearBox')">All Year</button>
+            <div class="multi-filter-menu" id="expertYearFilter"></div>
+        </div>
+        <div class="multi-filter" id="expertMonthBox">
+            <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('expertMonthBox')">All Month</button>
+            <div class="multi-filter-menu" id="expertMonthFilter"></div>
+        </div>
     </div>
 
             <div class="chart-grid">
@@ -449,7 +514,10 @@
                     <option value="offline">Offline</option>
                 </select>
 
-                <select id="trendYearFilter" class="trend-filter" onchange="renderSalesTrendChart()"></select>
+                <div class="multi-filter trend-filter" id="trendYearBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('trendYearBox')">All Year</button>
+                    <div class="multi-filter-menu" id="trendYearFilter"></div>
+                </div>
             </div>
         </div>
 
@@ -470,8 +538,10 @@
         <div class="section">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
                 <h3 style="margin:0;">Yearly Sales</h3>
-                <select id="yearlyYearFilter" onchange="renderYearlyTableFromYearFilter()" style="max-width:180px;">
-                </select>
+                <div class="multi-filter" id="yearlyYearBox" style="max-width:180px;">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('yearlyYearBox')">All Year</button>
+                    <div class="multi-filter-menu" id="yearlyYearFilter"></div>
+                </div>
             </div>
             <div id="expertYearlyTable" class="loading">Loading...</div>
         </div>
@@ -494,8 +564,14 @@
                     <option value="20">Last 20</option>
                 </select>
 
-                <select id="productYearFilter" onchange="renderProductCharts()"></select>
-                <select id="productMonthFilter" onchange="renderProductCharts()"></select>
+                <div class="multi-filter" id="productYearBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('productYearBox')">All Year</button>
+                    <div class="multi-filter-menu" id="productYearFilter"></div>
+                </div>
+                <div class="multi-filter" id="productMonthBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('productMonthBox')">All Month</button>
+                    <div class="multi-filter-menu" id="productMonthFilter"></div>
+                </div>
 
             </div>
 
@@ -526,8 +602,14 @@
                     </button>
                     <div class="multi-filter-menu" id="affiliateExpertFilter"></div>
                 </div>
-                <select id="affiliateYearFilter" onchange="renderAffiliateProductTable()"></select>
-                <select id="affiliateMonthFilter" onchange="renderAffiliateProductTable()"></select>
+                <div class="multi-filter" id="affiliateYearBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('affiliateYearBox')">All Year</button>
+                    <div class="multi-filter-menu" id="affiliateYearFilter"></div>
+                </div>
+                <div class="multi-filter" id="affiliateMonthBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('affiliateMonthBox')">All Month</button>
+                    <div class="multi-filter-menu" id="affiliateMonthFilter"></div>
+                </div>
                 <button type="button" class="action-btn" onclick="resetAffiliateFilters()">Reset</button>
             </div>
 
@@ -536,6 +618,16 @@
 
         <div class="section">
             <h3>Highest Repeat Purchase Products</h3>
+            <div class="section-filter-bar">
+                <div class="multi-filter" id="repeatYearBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('repeatYearBox')">All Year</button>
+                    <div class="multi-filter-menu" id="repeatYearFilter"></div>
+                </div>
+                <div class="multi-filter" id="repeatMonthBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('repeatMonthBox')">All Month</button>
+                    <div class="multi-filter-menu" id="repeatMonthFilter"></div>
+                </div>
+            </div>
             <div id="repeatProductTable" class="loading">Loading...</div>
         </div>
 
@@ -728,25 +820,75 @@ function getProductSalesMatch(orderId) {
 }
 
 function toggleMultiFilter(id) {
+    document.querySelectorAll(".multi-filter").forEach(el => {
+        if (el.id !== id) el.classList.remove("open");
+    });
+
     document.getElementById(id).classList.toggle("open");
 }
 
+document.addEventListener("click", function(e) {
+    if (!e.target.closest(".multi-filter")) {
+        document.querySelectorAll(".multi-filter").forEach(el => el.classList.remove("open"));
+    }
+});
 function getSelectedMultiValues(id) {
     return Array.from(document.querySelectorAll(`#${id} input:checked`)).map(x => x.value);
 }
 
-function fillCheckboxFilter(id, values, renderFn) {
+function getMultiDefaultLabel(id) {
+    const menu = document.getElementById(id);
+    return menu ? (menu.dataset.defaultLabel || "All") : "All";
+}
+
+function updateMultiButtonText(id) {
+    const values = getSelectedMultiValues(id);
+    const btn = document.getElementById(id)?.parentElement?.querySelector(".multi-filter-btn");
+    if (!btn) return;
+
+    if (!values.length) {
+        btn.innerText = getMultiDefaultLabel(id);
+    } else if (values.length <= 2) {
+        btn.innerText = values.join(", ");
+    } else {
+        btn.innerText = values.length + " selected";
+    }
+}
+
+function getMultiDisplayText(id) {
+    const values = getSelectedMultiValues(id);
+    return values.length ? values.join(", ") : getMultiDefaultLabel(id);
+}
+
+function clearMultiFilter(id) {
+    document.querySelectorAll(`#${id} input`).forEach(x => x.checked = false);
+    updateMultiButtonText(id);
+}
+
+function fillCheckboxFilter(id, values, renderFn, defaultLabel) {
     const el = document.getElementById(id);
-    el.innerHTML = "";
+    if (!el) return;
+
+    el.dataset.defaultLabel = defaultLabel || "All";
+    el.innerHTML = `<button type="button" class="filter-reset-mini" onclick="clearMultiFilter('${id}'); window['${renderFn}']();">Clear</button>`;
 
     values.forEach(v => {
         el.innerHTML += `
             <label>
-                <input type="checkbox" value="${escapeHtml(v)}" onchange="${renderFn}()">
+                <input type="checkbox" value="${escapeHtml(v)}" onchange="updateMultiLabel('${id}','${renderFn}')">
                 ${escapeHtml(v)}
             </label>
         `;
     });
+
+    updateMultiButtonText(id);
+}
+
+function updateMultiLabel(id, renderFn) {
+    updateMultiButtonText(id);
+    if (typeof window[renderFn] === "function") {
+        window[renderFn]();
+    }
 }
 
 async function fetchProductRecords() {
@@ -823,51 +965,31 @@ function populateFilters() {
         })
     );
     const nutritionists = [...new Set(allData.map(r => getNutritionist(r).trim()).filter(v => v !== ""))].sort();
+    const affiliateExperts = [...new Set(productData.map(r => getProductExpert(r)).filter(v => v !== ""))].sort();
 
     fillDropdown("typeFilter", types, "Type");
-    fillCheckboxFilter("yearFilter", years, "applyFilters");
-    fillCheckboxFilter("monthFilter", months, "applyFilters");
-    fillCheckboxFilter("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "applyFilters");
-    fillCheckboxFilter("nutritionistFilter", nutritionists, "applyFilters");
-    fillDropdown("yearlyYearFilter", years, "Year");
-    fillDropdown("trendYearFilter", years, "Year");
-    fillDropdown("affiliateYearFilter", years, "Year");
-    fillDropdown("affiliateMonthFilter", months, "Month");
-    const affiliateExperts = [...new Set(productData.map(r => getProductExpert(r)).filter(v => v !== ""))].sort();
-    const affiliateExpertFilter = document.getElementById("affiliateExpertFilter");
 
-    if (affiliateExpertFilter) {
-        fillCheckboxFilter("affiliateExpertFilter", affiliateExperts, "renderAffiliateProductTable");
-    }
-    fillDropdown("productYearFilter", years, "Year");
-    fillDropdown("productMonthFilter", months, "Month");
+    fillCheckboxFilter("yearFilter", years, "applyFilters", "All Year");
+    fillCheckboxFilter("monthFilter", months, "applyFilters", "All Month");
+    fillCheckboxFilter("weekFilter", ["Week1","Week2","Week3","Week4","Week5"], "applyFilters", "All Week");
+    fillCheckboxFilter("nutritionistFilter", nutritionists, "applyFilters", "All Nutritionist");
 
-    const expertYearFilter = document.getElementById("expertYearFilter");
-    const expertMonthFilter = document.getElementById("expertMonthFilter");
+    fillCheckboxFilter("expertYearFilter", years, "renderExpertCharts", "All Year");
+    fillCheckboxFilter("expertMonthFilter", months, "renderExpertCharts", "All Month");
 
-    if (expertYearFilter) {
-        expertYearFilter.innerHTML = `<option value="">All Year</option>`;
-        years.forEach(y => {
-            expertYearFilter.innerHTML += `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`;
-        });
-    }
+    fillCheckboxFilter("trendYearFilter", years, "renderSalesTrendChart", "All Year");
 
-    if (expertMonthFilter) {
-        expertMonthFilter.innerHTML = `<option value="">All Month</option>`;
-        months.forEach(m => {
-            expertMonthFilter.innerHTML += `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`;
-        });
-    }
+    fillCheckboxFilter("yearlyYearFilter", years, "renderYearlyTableFromYearFilter", "All Year");
 
-    if (years.length) {
-            document.getElementById("yearFilter").value = "";
-            document.getElementById("yearlyYearFilter").value = years[years.length - 1];
-            document.getElementById("trendYearFilter").value = years[years.length - 1];
+    fillCheckboxFilter("productYearFilter", years, "renderProductCharts", "All Year");
+    fillCheckboxFilter("productMonthFilter", months, "renderProductCharts", "All Month");
 
-            if (expertYearFilter) {
-                expertYearFilter.value = years[years.length - 1];
-            }
-        }
+    fillCheckboxFilter("affiliateExpertFilter", affiliateExperts, "renderAffiliateProductTable", "Select Experts");
+    fillCheckboxFilter("affiliateYearFilter", years, "renderAffiliateProductTable", "All Year");
+    fillCheckboxFilter("affiliateMonthFilter", months, "renderAffiliateProductTable", "All Month");
+
+    fillCheckboxFilter("repeatYearFilter", years, "renderRepeatProductTable", "All Year");
+    fillCheckboxFilter("repeatMonthFilter", months, "renderRepeatProductTable", "All Month");
 }
 
 function applyFilters() {
@@ -1029,19 +1151,23 @@ names.forEach(name => {
 }
 
 function renderYearlyTableFromYearFilter() {
-    const selectedYear = document.getElementById("yearlyYearFilter").value;
-    renderYearlyTable(selectedYear);
+    const selectedYears = getSelectedMultiValues("yearlyYearFilter");
+    renderYearlyTable(selectedYears);
 }
 
-function renderYearlyTable(selectedYear) {
+function renderYearlyTable(selectedYears) {
     const container = document.getElementById("expertYearlyTable");
+    const yearsToUse = Array.isArray(selectedYears) ? selectedYears : (selectedYears ? [selectedYears] : []);
 
-    if (!selectedYear) {
-        container.innerHTML = `<div class="empty">Please select a year.</div>`;
+    const yearData = allData.filter(row => {
+        const rowYear = getYear(row);
+        return !yearsToUse.length || yearsToUse.includes(rowYear);
+    });
+
+    if (!yearData.length) {
+        container.innerHTML = `<div class="empty">No yearly sales data found for selected filters.</div>`;
         return;
     }
-
-    const yearData = allData.filter(row => getYear(row) === selectedYear);
 
     const monthly = {};
     monthOrder.forEach(month => {
@@ -1077,6 +1203,8 @@ function renderYearlyTable(selectedYear) {
             monthly[month].commission += commission;
         }
     });
+
+    const suffix = yearsToUse.length === 1 ? " '" + String(yearsToUse[0]).slice(-2) : "";
 
     let html = `
         <div class="table-wrap">
@@ -1116,7 +1244,7 @@ function renderYearlyTable(selectedYear) {
 
         html += `
             <tr>
-                <td>${month} '${String(selectedYear).slice(-2)}</td>
+                <td>${month}${suffix}</td>
                 <td class="number">${formatPlain(m.total)}</td>
                 <td class="number">${formatPlain(m.commission)}</td>
                 <td class="number">${formatPlain(m.net)}</td>
@@ -1148,8 +1276,8 @@ function renderYearlyTable(selectedYear) {
 function renderExpertCharts() {
     const topLimit = parseInt(document.getElementById("topExpertLimitFilter")?.value || "5", 10);
     const bottomLimit = parseInt(document.getElementById("bottomExpertLimitFilter")?.value || "5", 10);
-    const selectedYear = document.getElementById("expertYearFilter")?.value || "";
-    const selectedMonth = document.getElementById("expertMonthFilter")?.value || "";
+    const selectedYears = getSelectedMultiValues("expertYearFilter");
+    const selectedMonths = getSelectedMultiValues("expertMonthFilter");
     const selectedType = document.getElementById("expertTypeFilter")?.value || "";
 
     const filtered = allData.filter(row => {
@@ -1163,8 +1291,8 @@ function renderExpertCharts() {
 
         const rowType = getType(row).trim().toLowerCase();
 
-        return (!selectedYear || rowYear === selectedYear) &&
-               (!selectedMonth || rowMonth === selectedMonth) &&
+        return (!selectedYears.length || selectedYears.includes(rowYear)) &&
+               (!selectedMonths.length || selectedMonths.includes(rowMonth)) &&
                (!selectedType || rowType === selectedType);
     });
 
@@ -1324,8 +1452,8 @@ function renderExpertCharts() {
 function renderProductCharts() {
     const topLimit = parseInt(document.getElementById("topProductLimitFilter")?.value || "10", 10);
     const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
-    const selectedYear = document.getElementById("productYearFilter")?.value || "";
-    const selectedMonth = document.getElementById("productMonthFilter")?.value || "";
+    const selectedYears = getSelectedMultiValues("productYearFilter");
+    const selectedMonths = getSelectedMultiValues("productMonthFilter");
 
     const grouped = {};
 
@@ -1343,8 +1471,8 @@ function renderProductCharts() {
             month = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
         }
 
-        if (selectedYear && year !== selectedYear) return;
-        if (selectedMonth && month !== selectedMonth) return;
+        if (selectedYears.length && !selectedYears.includes(year)) return;
+        if (selectedMonths.length && !selectedMonths.includes(month)) return;
 
         const product = getProductName(row);
         const qty = getProductQty(row);
@@ -1434,17 +1562,17 @@ function getProductChartOptions() {
 }
 
 function resetAffiliateFilters() {
-    document.querySelectorAll("#affiliateExpertFilter input").forEach(x => x.checked = false);
-    document.getElementById("affiliateYearFilter").value = "";
-    document.getElementById("affiliateMonthFilter").value = "";
+    clearMultiFilter("affiliateExpertFilter");
+    clearMultiFilter("affiliateYearFilter");
+    clearMultiFilter("affiliateMonthFilter");
     renderAffiliateProductTable();
 }
 
 function renderAffiliateProductTable() {
     const container = document.getElementById("affiliateProductTable");
     const selectedExperts = getSelectedMultiValues("affiliateExpertFilter");
-    const selectedYear = document.getElementById("affiliateYearFilter")?.value || "";
-    const selectedMonth = document.getElementById("affiliateMonthFilter")?.value || "";
+    const selectedYears = getSelectedMultiValues("affiliateYearFilter");
+    const selectedMonths = getSelectedMultiValues("affiliateMonthFilter");
 
     const grouped = {};
 
@@ -1467,8 +1595,8 @@ function renderAffiliateProductTable() {
         const qty = getProductQty(row);
 
         if (!product) return;
-        if (selectedYear && year !== selectedYear) return;
-        if (selectedMonth && month !== selectedMonth) return;
+        if (selectedYears.length && !selectedYears.includes(year)) return;
+        if (selectedMonths.length && !selectedMonths.includes(month)) return;
         if (selectedExperts.length && !selectedExperts.includes(expert)) return;
 
         if (!grouped[expert]) grouped[expert] = {};
@@ -1484,9 +1612,11 @@ function renderAffiliateProductTable() {
         return;
     }
 
+    let grandTotal = 0;
+
     let html = `
         <div class="compact-table-wrap">
-            <table>
+            <table id="affiliateProductSummaryTable">
                 <thead>
                     <tr>
                         <th>Affiliate / Expert</th>
@@ -1503,6 +1633,8 @@ function renderAffiliateProductTable() {
             .sort((a, b) => b.qty - a.qty);
 
         products.forEach(item => {
+            grandTotal += item.qty;
+
             html += `
                 <tr>
                     <td>${escapeHtml(expert)}</td>
@@ -1514,6 +1646,10 @@ function renderAffiliateProductTable() {
     });
 
     html += `
+                <tr class="total-row">
+                    <td colspan="2">Total</td>
+                    <td class="number">${grandTotal}</td>
+                </tr>
                 </tbody>
             </table>
         </div>
@@ -1524,11 +1660,28 @@ function renderAffiliateProductTable() {
 
 function renderRepeatProductTable() {
     const container = document.getElementById("repeatProductTable");
+    const selectedYears = getSelectedMultiValues("repeatYearFilter");
+    const selectedMonths = getSelectedMultiValues("repeatMonthFilter");
     const grouped = {};
 
     productData.forEach(row => {
-        const product = getProductName(row);
         const orderId = getProductOrderId(row);
+        const salesRow = getProductSalesMatch(orderId);
+
+        if (!salesRow) return;
+
+        const year = getYear(salesRow);
+
+        let month = getMonth(salesRow);
+        if (month) {
+            const x = month.toLowerCase().slice(0,3);
+            month = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        if (selectedYears.length && !selectedYears.includes(year)) return;
+        if (selectedMonths.length && !selectedMonths.includes(month)) return;
+
+        const product = getProductName(row);
 
         if (!product || !orderId) return;
 
@@ -1548,9 +1701,11 @@ function renderRepeatProductTable() {
         return;
     }
 
+    const totalRepeatOrders = list.reduce((sum, item) => sum + item.repeatOrders, 0);
+
     let html = `
         <div class="compact-table-wrap">
-            <table>
+            <table id="repeatProductSummaryTable">
                 <thead>
                     <tr>
                         <th>Product Name</th>
@@ -1570,6 +1725,10 @@ function renderRepeatProductTable() {
     });
 
     html += `
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td class="number">${totalRepeatOrders}</td>
+                </tr>
                 </tbody>
             </table>
         </div>
@@ -1579,16 +1738,14 @@ function renderRepeatProductTable() {
 }
 
 function renderSalesTrendChart() {
-    const selectedYear = document.getElementById("trendYearFilter")?.value || "";
+    const selectedYears = getSelectedMultiValues("trendYearFilter");
     const selectedType = document.getElementById("trendTypeFilter")?.value || "";
-
-    if (!selectedYear) return;
 
     const yearData = allData.filter(row => {
     const rowYear = getYear(row);
     const rowType = getType(row).trim().toLowerCase();
 
-    return (!selectedYear || rowYear === selectedYear) &&
+    return (!selectedYears.length || selectedYears.includes(rowYear)) &&
            (!selectedType || rowType === selectedType);
 });
 
@@ -1771,30 +1928,26 @@ async function initDashboard() {
 
 async function refreshDashboard() {
     document.getElementById("typeFilter").value = "";
-    document.querySelectorAll("#yearFilter input").forEach(x => x.checked = false);
-    document.querySelectorAll("#monthFilter input").forEach(x => x.checked = false);
-    document.querySelectorAll("#weekFilter input").forEach(x => x.checked = false);
+
+    [
+        "yearFilter", "monthFilter", "weekFilter", "nutritionistFilter",
+        "expertYearFilter", "expertMonthFilter", "trendYearFilter",
+        "yearlyYearFilter", "productYearFilter", "productMonthFilter",
+        "affiliateExpertFilter", "affiliateYearFilter", "affiliateMonthFilter",
+        "repeatYearFilter", "repeatMonthFilter"
+    ].forEach(clearMultiFilter);
+
     document.getElementById("dateFilter").value = "";
-    document.querySelectorAll("#nutritionistFilter input").forEach(x => x.checked = false);
 
     document.getElementById("topExpertLimitFilter").value = "5";
     document.getElementById("bottomExpertLimitFilter").value = "5";
     document.getElementById("expertTypeFilter").value = "";
-    document.getElementById("expertMonthFilter").value = "";
+
+    document.getElementById("trendTypeFilter").value = "";
 
     document.getElementById("topProductLimitFilter").value = "10";
     document.getElementById("bottomProductLimitFilter").value = "10";
 
-    if (document.getElementById("productYearFilter")) document.getElementById("productYearFilter").value = "";
-    if (document.getElementById("productMonthFilter")) document.getElementById("productMonthFilter").value = "";
-
-    if (document.getElementById("affiliateExpertFilter")) {
-        document.querySelectorAll("#affiliateExpertFilter input").forEach(x => x.checked = false);
-    }
-    if (document.getElementById("affiliateYearFilter")) document.getElementById("affiliateYearFilter").value = "";
-    if (document.getElementById("affiliateMonthFilter")) document.getElementById("affiliateMonthFilter").value = "";
-
-    populateFilters();
     applyFilters();
     renderYearlyTableFromYearFilter();
     renderExpertCharts();
@@ -1834,11 +1987,11 @@ function exportDashboardReport() {
     }
 
     const typeText = document.getElementById("typeFilter").selectedOptions[0]?.text || "All Type";
-    const yearText = document.getElementById("yearFilter").selectedOptions[0]?.text || "All Year";
-    const monthText = document.getElementById("monthFilter").selectedOptions[0]?.text || "All Month";
-    const weekText = document.getElementById("weekFilter").selectedOptions[0]?.text || "All Week";
+    const yearText = getMultiDisplayText("yearFilter");
+    const monthText = getMultiDisplayText("monthFilter");
+    const weekText = getMultiDisplayText("weekFilter");
     const dateText = document.getElementById("dateFilter").value || "All Date";
-    const nutritionistText = document.getElementById("nutritionistFilter").selectedOptions[0]?.text || "All Nutritionist";
+    const nutritionistText = getMultiDisplayText("nutritionistFilter");
 
     const totalSales = document.getElementById("cardTotalSales").innerText;
     const totalNetSales = document.getElementById("cardTotalNetSales").innerText;

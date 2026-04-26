@@ -1658,11 +1658,24 @@ function renderAffiliateProductTable() {
     container.innerHTML = html;
 }
 
+function getCustomerKey(row) {
+    return String(getField(row, [
+        "Customer Email",
+        "Customer_Email",
+        "Email",
+        "Customer ID",
+        "Customer_ID",
+        "Phone",
+        "Mobile"
+    ])).trim().toLowerCase();
+}
+
 function renderRepeatProductTable() {
     const container = document.getElementById("repeatProductTable");
     const selectedYears = getSelectedMultiValues("repeatYearFilter");
     const selectedMonths = getSelectedMultiValues("repeatMonthFilter");
-    const grouped = {};
+
+    const customerProductOrders = {};
 
     productData.forEach(row => {
         const orderId = getProductOrderId(row);
@@ -1682,26 +1695,47 @@ function renderRepeatProductTable() {
         if (selectedMonths.length && !selectedMonths.includes(month)) return;
 
         const product = getProductName(row);
+        const customer = getCustomerKey(salesRow) || getCustomerKey(row);
 
-        if (!product || !orderId) return;
+        if (!product || !customer || !orderId) return;
 
-        if (!grouped[product]) grouped[product] = new Set();
-        grouped[product].add(orderId);
+        const key = customer + "||" + product;
+
+        if (!customerProductOrders[key]) {
+            customerProductOrders[key] = {
+                product: product,
+                customer: customer,
+                orders: new Set()
+            };
+        }
+
+        customerProductOrders[key].orders.add(orderId);
     });
 
-    const list = Object.keys(grouped)
+    const productRepeatCustomers = {};
+
+    Object.values(customerProductOrders).forEach(item => {
+        if (item.orders.size > 1) {
+            if (!productRepeatCustomers[item.product]) {
+                productRepeatCustomers[item.product] = 0;
+            }
+            productRepeatCustomers[item.product] += 1;
+        }
+    });
+
+    const list = Object.keys(productRepeatCustomers)
         .map(product => ({
             product,
-            repeatOrders: grouped[product].size
+            repeatCustomers: productRepeatCustomers[product]
         }))
-        .sort((a, b) => b.repeatOrders - a.repeatOrders);
+        .sort((a, b) => b.repeatCustomers - a.repeatCustomers);
 
     if (!list.length) {
         container.innerHTML = `<div class="empty">No repeat product data found.</div>`;
         return;
     }
 
-    const totalRepeatOrders = list.reduce((sum, item) => sum + item.repeatOrders, 0);
+    const totalRepeatCustomers = list.reduce((sum, item) => sum + item.repeatCustomers, 0);
 
     let html = `
         <div class="compact-table-wrap">
@@ -1709,7 +1743,7 @@ function renderRepeatProductTable() {
                 <thead>
                     <tr>
                         <th>Product Name</th>
-                        <th class="number">Repeat Order Count</th>
+                        <th class="number">Repeat Customer Count</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1719,7 +1753,7 @@ function renderRepeatProductTable() {
         html += `
             <tr>
                 <td>${escapeHtml(item.product)}</td>
-                <td class="number">${item.repeatOrders}</td>
+                <td class="number">${item.repeatCustomers}</td>
             </tr>
         `;
     });
@@ -1727,7 +1761,7 @@ function renderRepeatProductTable() {
     html += `
                 <tr class="total-row">
                     <td>Total</td>
-                    <td class="number">${totalRepeatOrders}</td>
+                    <td class="number">${totalRepeatCustomers}</td>
                 </tr>
                 </tbody>
             </table>

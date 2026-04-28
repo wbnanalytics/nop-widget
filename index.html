@@ -641,6 +641,11 @@
                     <option value="5">Top 5</option>
                     <option value="10" selected>Top 10</option>
                 </select>
+                <select id="geoTypeFilter" onchange="renderGeoCharts()">
+                    <option value="">All Type</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
                 <div class="multi-filter" id="geoYearBox">
                     <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('geoYearBox')">All Year</button>
                     <div class="multi-filter-menu" id="geoYearFilter"></div>
@@ -1610,6 +1615,7 @@ function renderExpertCharts() {
 
 
 function renderGeoCharts() {
+    const selectedType = document.getElementById("geoTypeFilter")?.value || "";
     const limit = parseInt(document.getElementById("geoLimitFilter")?.value || "10", 10);
     const selectedYears = getSelectedMultiValues("geoYearFilter");
     const selectedMonths = getSelectedMultiValues("geoMonthFilter");
@@ -1627,8 +1633,13 @@ function renderGeoCharts() {
             rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
         }
 
+        
+
+        const rowType = getType(row).trim().toLowerCase();
+
         if (selectedYears.length && !selectedYears.includes(rowYear)) return;
         if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+        if (selectedType && rowType !== selectedType) return;
 
         const netSales = getNetSalesForRow(row);
 
@@ -1780,8 +1791,10 @@ function renderProductCharts() {
             rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
         }
 
+
         if (selectedYears.length && !selectedYears.includes(rowYear)) return;
         if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+    
 
         const product = getProductName(row);
         const qty = getProductQty(row);
@@ -2306,7 +2319,7 @@ async function refreshDashboard() {
 
     document.getElementById("topProductLimitFilter").value = "10";
     document.getElementById("bottomProductLimitFilter").value = "10";
-    document.getElementById("geoLimitFilter").value = "10";
+    document.getElementById("geoTypeFilter").value = "";
 
     applyFilters();
     renderYearlyTableFromYearFilter();
@@ -2378,6 +2391,7 @@ function exportDashboardReport() {
     const geoLimitText = document.getElementById("geoLimitFilter")?.selectedOptions[0]?.text || "Top 10";
     const geoYearText = getMultiDisplayText("geoYearFilter");
     const geoMonthText = getMultiDisplayText("geoMonthFilter");
+    const geoTypeText = document.getElementById("geoTypeFilter")?.selectedOptions[0]?.text || "All Type";
 
 
     if (!nutritionTable || !yearlyTable) {
@@ -2490,6 +2504,7 @@ function exportDashboardReport() {
         <table class="filters">
             <tr>
                 <td><b>Limit</b></td><td>${geoLimitText}</td>
+                <td><b>Type</b></td><td>${geoTypeText}</td>
                 <td><b>Year</b></td><td>${geoYearText}</td>
                 <td><b>Month</b></td><td>${geoMonthText}</td>
             </tr>

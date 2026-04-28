@@ -700,15 +700,50 @@ function norm(str) {
     return String(str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function cleanKey(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+}
+
+function cleanGroupName(value) {
+    const text = String(value || "").trim().replace(/\s+/g, " ");
+    if (!text) return "";
+
+    return text
+        .toLowerCase()
+        .split(" ")
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+}
+
+function getNetSalesForRow(row) {
+    const type = getType(row).toLowerCase();
+    const total = getTotalSales(row);
+    const commission = getCommission(row);
+
+    return type === "offline" ? total : (total - commission);
+}
+
 function getField(row, candidates) {
     const keys = Object.keys(row || {});
+
     for (const c of candidates) {
         const target = norm(c);
         const found = keys.find(k => norm(k) === target);
+
         if (found && row[found] !== undefined && row[found] !== null && row[found] !== "") {
-            return row[found];
+            const val = row[found];
+
+            if (typeof val === "object") {
+                return val.display_value || val.value || val.name || val.ID || "";
+            }
+
+            return val;
         }
     }
+
     return "";
 }
 
@@ -789,17 +824,17 @@ function getExpert(row) {
 
 function getCity(row) {
     const masterRow = getExpertMasterRow(row);
-    return masterRow ? String(getField(masterRow, ["City"])).trim() : "";
+    return masterRow ? cleanGroupName(getField(masterRow, ["City"])) : "";
 }
 
 function getState(row) {
     const masterRow = getExpertMasterRow(row);
-    return masterRow ? String(getField(masterRow, ["State"])).trim() : "";
+    return masterRow ? cleanGroupName(getField(masterRow, ["State"])) : "";
 }
 
 function getExpertise(row) {
     const masterRow = getExpertMasterRow(row);
-    return masterRow ? String(getField(masterRow, ["Expertise"])).trim() : "";
+    return masterRow ? cleanGroupName(getField(masterRow, ["Expertise"])) : "";
 }
 
 function getDOS(row) {
@@ -876,21 +911,20 @@ function buildExpertMasterMap() {
     expertMasterMap = {};
 
     expertMasterData.forEach(row => {
-        const name = String(getField(row, [
+        const name = getField(row, [
             "Expert_Name",
             "Expert Name",
             "Expert",
             "Name"
-        ])).trim();
+        ]);
 
-        if (name) {
-            expertMasterMap[norm(name)] = row;
-        }
+        const key = cleanKey(name);
+        if (key) expertMasterMap[key] = row;
     });
 }
 
 function getExpertMasterRow(salesRow) {
-    const expertName = String(getField(salesRow, [
+    const expertName = getField(salesRow, [
         "Expert Name",
         "Expert_Name",
         "Expert",
@@ -898,9 +932,10 @@ function getExpertMasterRow(salesRow) {
         "Assigned_Expert",
         "Affiliate",
         "Affiliate Name"
-    ])).trim();
+    ]);
 
-    return expertMasterMap[norm(expertName)] || null;
+    const key = cleanKey(expertName);
+    return expertMasterMap[key] || null;
 }
 
 function getProductSalesMatch(orderId) {
@@ -1650,11 +1685,11 @@ function renderGeoCharts() {
         const commission = getCommission(row);
 
         // Net Sales logic
-        const netSales = type === "offline" ? total : (total - commission);
+        const netSales = getNetSalesForRow(row);
 
-        const city = getCity(row);
-        const state = getState(row);
-        const expertise = getExpertise(row);
+        const city = cleanGroupName(getCity(row));
+        const state = cleanGroupName(getState(row));
+        const expertise = cleanGroupName(getExpertise(row));
 
         if (!city && !state && !expertise) return;
 

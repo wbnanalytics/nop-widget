@@ -876,14 +876,31 @@ function buildExpertMasterMap() {
     expertMasterMap = {};
 
     expertMasterData.forEach(row => {
-        const name = String(getField(row, ["Expert_Name", "Expert Name", "Expert"])).trim().toLowerCase();
-        if (name) expertMasterMap[name] = row;
+        const name = String(getField(row, [
+            "Expert_Name",
+            "Expert Name",
+            "Expert",
+            "Name"
+        ])).trim();
+
+        if (name) {
+            expertMasterMap[norm(name)] = row;
+        }
     });
 }
 
 function getExpertMasterRow(salesRow) {
-    const expertName = getExpert(salesRow).trim().toLowerCase();
-    return expertMasterMap[expertName] || null;
+    const expertName = String(getField(salesRow, [
+        "Expert Name",
+        "Expert_Name",
+        "Expert",
+        "Assigned Expert",
+        "Assigned_Expert",
+        "Affiliate",
+        "Affiliate Name"
+    ])).trim();
+
+    return expertMasterMap[norm(expertName)] || null;
 }
 
 function getProductSalesMatch(orderId) {
@@ -1628,24 +1645,39 @@ function renderGeoCharts() {
     const expertiseMap = {};
 
     allData.forEach(row => {
-        const sales = getTotalSales(row);
+        const type = getType(row).toLowerCase();
+        const total = getTotalSales(row);
+        const commission = getCommission(row);
 
-        const city = getCity(row) || "Unknown";
-        const state = getState(row) || "Unknown";
-        const expertise = getExpertise(row) || "Unknown";
+        // Net Sales logic
+        const netSales = type === "offline" ? total : (total - commission);
 
-        if (!cityMap[city]) cityMap[city] = 0;
-        if (!stateMap[state]) stateMap[state] = 0;
-        if (!expertiseMap[expertise]) expertiseMap[expertise] = 0;
+        const city = getCity(row);
+        const state = getState(row);
+        const expertise = getExpertise(row);
 
-        cityMap[city] += sales;
-        stateMap[state] += sales;
-        expertiseMap[expertise] += sales;
+        if (!city && !state && !expertise) return;
+
+        if (city) {
+            if (!cityMap[city]) cityMap[city] = 0;
+            cityMap[city] += netSales;
+        }
+
+        if (state) {
+            if (!stateMap[state]) stateMap[state] = 0;
+            stateMap[state] += netSales;
+        }
+
+        if (expertise) {
+            if (!expertiseMap[expertise]) expertiseMap[expertise] = 0;
+            expertiseMap[expertise] += netSales;
+        }
     });
 
     function prepareData(map) {
         return Object.keys(map)
             .map(k => ({ name: k, total: map[k] }))
+            .filter(x => x.total > 0)
             .sort((a, b) => b.total - a.total)
             .slice(0, limit);
     }
@@ -1654,60 +1686,104 @@ function renderGeoCharts() {
     const stateData = prepareData(stateMap);
     const expertiseData = prepareData(expertiseMap);
 
-    // Destroy old charts
     if (cityChartInstance) cityChartInstance.destroy();
     if (stateChartInstance) stateChartInstance.destroy();
     if (expertiseChartInstance) expertiseChartInstance.destroy();
 
-    // COMMON OPTIONS
     const options = {
         responsive: true,
         maintainAspectRatio: false,
         indexAxis: "y",
+        layout: {
+            padding: { right: 110 }
+        },
         plugins: {
             legend: { display: false },
             datalabels: {
                 anchor: "end",
                 align: "right",
-                formatter: value => formatPlain(value)
+                offset: 6,
+                color: "#215c78",
+                font: {
+                    weight: "bold",
+                    size: 11
+                },
+                formatter: function(value) {
+                    if (value >= 10000000) return (value / 10000000).toFixed(2) + "Cr";
+                    if (value >= 100000) return (value / 100000).toFixed(2) + "L";
+                    if (value >= 1000) return (value / 1000).toFixed(2) + "K";
+                    return formatPlain(value);
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return "Net Sales: " + formatCurrency(context.raw);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: {
+                    color: "#215c78",
+                    callback: function(value) {
+                        if (value >= 10000000) return (value / 10000000).toFixed(1) + "Cr";
+                        if (value >= 100000) return (value / 100000).toFixed(1) + "L";
+                        if (value >= 1000) return (value / 1000).toFixed(0) + "K";
+                        return value;
+                    }
+                },
+                grid: { color: "#d7e9f1" }
+            },
+            y: {
+                ticks: { color: "#215c78" },
+                grid: { color: "#d7e9f1" }
             }
         }
     };
 
-    // CITY
     cityChartInstance = new Chart(document.getElementById("cityChart"), {
         type: "bar",
         data: {
             labels: cityData.map(x => x.name),
             datasets: [{
+                label: "Net Sales",
                 data: cityData.map(x => x.total),
-                backgroundColor: "#215c78"
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
+                borderWidth: 1
             }]
         },
         options
     });
 
-    // STATE
-    stateChartInstance = new Chart(document.getElementById("stateChart"), {
-        type: "bar",
-        data: {
-            labels: stateData.map(x => x.name),
-            datasets: [{
-                data: stateData.map(x => x.total),
-                backgroundColor: "#215c78"
-            }]
-        },
-        options
-    });
-
-    // EXPERTISE
     expertiseChartInstance = new Chart(document.getElementById("expertiseChart"), {
         type: "bar",
         data: {
             labels: expertiseData.map(x => x.name),
             datasets: [{
+                label: "Net Sales",
                 data: expertiseData.map(x => x.total),
-                backgroundColor: "#215c78"
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
+                borderWidth: 1
+            }]
+        },
+        options
+    });
+
+    stateChartInstance = new Chart(document.getElementById("stateChart"), {
+        type: "bar",
+        data: {
+            labels: stateData.map(x => x.name),
+            datasets: [{
+                label: "Net Sales",
+                data: stateData.map(x => x.total),
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
+                borderWidth: 1
             }]
         },
         options

@@ -1047,7 +1047,7 @@ async function fetchExpertMasterRecords() {
     while (true) {
         const config = {
             app_name: "nop-sales-summary",
-            report_name: "All_Onboarded_Experts",
+            report_name: "All_Onboarded_Experts1",
             max_records: 1000
         };
 
@@ -2247,6 +2247,9 @@ async function initDashboard() {
         allData = await fetchAllRecords();
         productData = await fetchProductRecords();
         expertMasterData = await fetchExpertMasterRecords();
+
+        console.log("Expert Master Count:", expertMasterData.length);
+        console.log("First Expert Master Row:", expertMasterData[0]);
 
         buildSalesOrderMap();
         buildExpertMasterMap();

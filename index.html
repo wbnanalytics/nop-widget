@@ -482,6 +482,13 @@
             <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('expertMonthBox')">All Month</button>
             <div class="multi-filter-menu" id="expertMonthFilter"></div>
         </div>
+        <div class="multi-filter" id="expertNutritionistBox">
+            <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('expertNutritionistBox')">
+                All Nutritionist
+            </button>
+            <div class="multi-filter-menu" id="expertNutritionistFilter"></div>
+        </div>
+
     </div>
 
             <div class="chart-grid">
@@ -1154,6 +1161,7 @@ function populateFilters() {
     fillCheckboxFilter("repeatMonthFilter", months, "renderRepeatProductTable", "All Month");
     fillCheckboxFilter("geoYearFilter", years, "renderGeoCharts", "All Year");
     fillCheckboxFilter("geoMonthFilter", months, "renderGeoCharts", "All Month");
+    fillCheckboxFilter("expertNutritionistFilter", nutritionists, "renderExpertCharts", "All Nutritionist");
 }
 
 function applyFilters() {
@@ -1443,6 +1451,7 @@ function renderExpertCharts() {
     const selectedYears = getSelectedMultiValues("expertYearFilter");
     const selectedMonths = getSelectedMultiValues("expertMonthFilter");
     const selectedType = document.getElementById("expertTypeFilter")?.value || "";
+    const selectedNutritionists = getSelectedMultiValues("expertNutritionistFilter");
 
     const filtered = allData.filter(row => {
         const rowYear = getYear(row);
@@ -1455,9 +1464,12 @@ function renderExpertCharts() {
 
         const rowType = getType(row).trim().toLowerCase();
 
+        const rowNutritionist = getNutritionist(row).trim();
+
         return (!selectedYears.length || selectedYears.includes(rowYear)) &&
-               (!selectedMonths.length || selectedMonths.includes(rowMonth)) &&
-               (!selectedType || rowType === selectedType);
+            (!selectedMonths.length || selectedMonths.includes(rowMonth)) &&
+            (!selectedType || rowType === selectedType) &&
+            (!selectedNutritionists.length || selectedNutritionists.includes(rowNutritionist));
     });
 
     const grouped = {};
@@ -2302,7 +2314,8 @@ async function refreshDashboard() {
 
     [
         "yearFilter", "monthFilter", "weekFilter", "nutritionistFilter",
-        "expertYearFilter", "expertMonthFilter", "trendYearFilter",
+        "expertYearFilter", "expertMonthFilter", "expertNutritionistFilter",
+        "trendYearFilter",
         "yearlyYearFilter", "productYearFilter", "productMonthFilter",
         "affiliateExpertFilter", "affiliateYearFilter", "affiliateMonthFilter",
         "repeatYearFilter", "repeatMonthFilter",
@@ -2319,6 +2332,8 @@ async function refreshDashboard() {
 
     document.getElementById("topProductLimitFilter").value = "10";
     document.getElementById("bottomProductLimitFilter").value = "10";
+
+    document.getElementById("geoLimitFilter").value = "10";
     document.getElementById("geoTypeFilter").value = "";
 
     applyFilters();

@@ -293,7 +293,7 @@
 
             .chart-wrap {
                 position: relative;
-                height: 700px;
+                height: 380px;
             }
 
             .section-divider {
@@ -640,7 +640,6 @@
                 <select id="geoLimitFilter" onchange="renderGeoCharts()">
                     <option value="5">Top 5</option>
                     <option value="10" selected>Top 10</option>
-                    <option value="20">Top 20</option>
                 </select>
                 <div class="multi-filter" id="geoYearBox">
                     <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('geoYearBox')">All Year</button>
@@ -1759,6 +1758,82 @@ function renderGeoCharts() {
     });
 }
 
+
+function renderProductCharts() {
+    const topLimit = parseInt(document.getElementById("topProductLimitFilter")?.value || "10", 10);
+    const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
+    const selectedYears = getSelectedMultiValues("productYearFilter");
+    const selectedMonths = getSelectedMultiValues("productMonthFilter");
+
+    const productMap = {};
+
+    productData.forEach(row => {
+        const orderId = getProductOrderId(row);
+        const salesRow = getProductSalesMatch(orderId);
+        if (!salesRow) return;
+
+        const rowYear = getYear(salesRow);
+
+        let rowMonth = getMonth(salesRow);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0, 3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+        if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+
+        const product = getProductName(row);
+        const qty = getProductQty(row);
+
+        if (!product || qty <= 0) return;
+
+        productMap[product] = (productMap[product] || 0) + qty;
+    });
+
+    const list = Object.keys(productMap)
+        .map(name => ({ name, total: productMap[name] }))
+        .filter(x => x.total > 0);
+
+    const topData = [...list].sort((a, b) => b.total - a.total).slice(0, topLimit);
+    const bottomData = [...list].sort((a, b) => a.total - b.total).slice(0, bottomLimit);
+
+    if (topProductsChartInstance) topProductsChartInstance.destroy();
+    if (bottomProductsChartInstance) bottomProductsChartInstance.destroy();
+
+    const options = getProductChartOptions();
+
+    topProductsChartInstance = new Chart(document.getElementById("topProductsChart"), {
+        type: "bar",
+        data: {
+            labels: topData.map(x => x.name),
+            datasets: [{
+                label: "Quantity",
+                data: topData.map(x => x.total),
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
+                borderWidth: 1
+            }]
+        },
+        options
+    });
+
+    bottomProductsChartInstance = new Chart(document.getElementById("bottomProductsChart"), {
+        type: "bar",
+        data: {
+            labels: bottomData.map(x => x.name),
+            datasets: [{
+                label: "Quantity",
+                data: bottomData.map(x => x.total),
+                backgroundColor: "#215c78",
+                borderColor: "#215c78",
+                borderWidth: 1
+            }]
+        },
+        options
+    });
+}
+
 function getProductChartOptions() {
     return {
         responsive: true,
@@ -2231,6 +2306,7 @@ async function refreshDashboard() {
 
     document.getElementById("topProductLimitFilter").value = "10";
     document.getElementById("bottomProductLimitFilter").value = "10";
+    document.getElementById("geoLimitFilter").value = "10";
 
     applyFilters();
     renderYearlyTableFromYearFilter();
@@ -2259,11 +2335,49 @@ function convertTableForExcel(table) {
     return cloned.outerHTML;
 }
 
+function buildGeoExportTable(title, chartInstance) {
+    if (!chartInstance || !chartInstance.data || !chartInstance.data.labels.length) {
+        return `<h3>${title}</h3><p>No data found.</p>`;
+    }
+
+    let html = `
+        <h3>${title}</h3>
+        <table class="report">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th class="num">Net Sales</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    chartInstance.data.labels.forEach((label, index) => {
+        const value = chartInstance.data.datasets[0].data[index] || 0;
+        html += `
+            <tr>
+                <td>${escapeHtml(label)}</td>
+                <td class="num">${formatPlain(value)}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    return html;
+}
+
 function exportDashboardReport() {
     const nutritionTable = document.getElementById("nutritionistSummaryTable");
     const yearlyTable = document.getElementById("yearlySalesTable");
     const affiliateTable = document.querySelector("#affiliateProductTable table");
     const repeatTable = document.querySelector("#repeatProductTable table");
+    const geoLimitText = document.getElementById("geoLimitFilter")?.selectedOptions[0]?.text || "Top 10";
+    const geoYearText = getMultiDisplayText("geoYearFilter");
+    const geoMonthText = getMultiDisplayText("geoMonthFilter");
 
 
     if (!nutritionTable || !yearlyTable) {
@@ -2371,6 +2485,19 @@ function exportDashboardReport() {
 
         <h3>Highest Repeat Purchase Products</h3>
         ${repeatTable ? convertTableForExcel(repeatTable) : ""}
+
+        <h3>City / Expertise / State Sales Reports</h3>
+        <table class="filters">
+            <tr>
+                <td><b>Limit</b></td><td>${geoLimitText}</td>
+                <td><b>Year</b></td><td>${geoYearText}</td>
+                <td><b>Month</b></td><td>${geoMonthText}</td>
+            </tr>
+        </table>
+
+        ${buildGeoExportTable("Top Cities Net Sales", cityChartInstance)}
+        ${buildGeoExportTable("Top Expertise Net Sales", expertiseChartInstance)}
+        ${buildGeoExportTable("Top States Net Sales", stateChartInstance)}
     </body>
     </html>`;
 

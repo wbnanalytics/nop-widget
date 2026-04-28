@@ -293,7 +293,7 @@
 
             .chart-wrap {
                 position: relative;
-                height: 360px;
+                height: 520px;
             }
 
             .section-divider {
@@ -642,6 +642,15 @@
                     <option value="10" selected>Top 10</option>
                     <option value="20">Top 20</option>
                 </select>
+                <div class="multi-filter" id="geoYearBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('geoYearBox')">All Year</button>
+                    <div class="multi-filter-menu" id="geoYearFilter"></div>
+                </div>
+
+                <div class="multi-filter" id="geoMonthBox">
+                    <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('geoMonthBox')">All Month</button>
+                    <div class="multi-filter-menu" id="geoMonthFilter"></div>
+                </div>
             </div>
 
             <div class="chart-grid">
@@ -1139,6 +1148,8 @@ function populateFilters() {
 
     fillCheckboxFilter("repeatYearFilter", years, "renderRepeatProductTable", "All Year");
     fillCheckboxFilter("repeatMonthFilter", months, "renderRepeatProductTable", "All Month");
+    fillCheckboxFilter("geoYearFilter", years, "renderGeoCharts", "All Year");
+    fillCheckboxFilter("geoMonthFilter", months, "renderGeoCharts", "All Month");
 }
 
 function applyFilters() {
@@ -1598,79 +1609,120 @@ function renderExpertCharts() {
     });
 }
 
-function renderProductCharts() {
-    const topLimit = parseInt(document.getElementById("topProductLimitFilter")?.value || "10", 10);
-    const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
-    const selectedYears = getSelectedMultiValues("productYearFilter");
-    const selectedMonths = getSelectedMultiValues("productMonthFilter");
+function renderGeoCharts() {
+    const limit = parseInt(document.getElementById("geoLimitFilter")?.value || "10", 10);
+    const selectedYears = getSelectedMultiValues("geoYearFilter");
+    const selectedMonths = getSelectedMultiValues("geoMonthFilter");
 
-    const grouped = {};
+    const cityMap = {};
+    const stateMap = {};
+    const expertiseMap = {};
 
-    productData.forEach(row => {
-        const orderId = getProductOrderId(row);
-        const salesRow = getProductSalesMatch(orderId);
+    allData.forEach(row => {
+        const rowYear = getYear(row);
 
-        if (!salesRow) return;
-
-        const year = getYear(salesRow);
-
-        let month = getMonth(salesRow);
-        if (month) {
-            const x = month.toLowerCase().slice(0, 3);
-            month = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        let rowMonth = getMonth(row);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0, 3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
         }
 
-        if (selectedYears.length && !selectedYears.includes(year)) return;
-        if (selectedMonths.length && !selectedMonths.includes(month)) return;
+        if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+        if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
 
-        const product = getProductName(row);
-        const qty = getProductQty(row);
+        const netSales = getNetSalesForRow(row);
 
-        if (!product) return;
-        if (!grouped[product]) grouped[product] = 0;
+        const city = cleanGroupName(getCity(row));
+        const state = cleanGroupName(getState(row));
+        const expertise = cleanGroupName(getExpertise(row));
 
-        grouped[product] += qty;
+        if (city) cityMap[city] = (cityMap[city] || 0) + netSales;
+        if (state) stateMap[state] = (stateMap[state] || 0) + netSales;
+        if (expertise) expertiseMap[expertise] = (expertiseMap[expertise] || 0) + netSales;
     });
 
-    const list = Object.keys(grouped)
-        .map(name => ({ name, total: grouped[name] }))
-        .filter(x => x.total > 0);
+    function prepareData(map) {
+        return Object.keys(map)
+            .map(name => ({ name, total: map[name] }))
+            .filter(x => x.total > 0)
+            .sort((a, b) => b.total - a.total)
+            .slice(0, limit);
+    }
 
-    const topData = [...list].sort((a, b) => b.total - a.total).slice(0, topLimit);
-    const bottomData = [...list].sort((a, b) => a.total - b.total).slice(0, bottomLimit);
+    const cityData = prepareData(cityMap);
+    const expertiseData = prepareData(expertiseMap);
+    const stateData = prepareData(stateMap);
 
-    if (topProductsChartInstance) topProductsChartInstance.destroy();
-    if (bottomProductsChartInstance) bottomProductsChartInstance.destroy();
+    if (cityChartInstance) cityChartInstance.destroy();
+    if (expertiseChartInstance) expertiseChartInstance.destroy();
+    if (stateChartInstance) stateChartInstance.destroy();
 
-    topProductsChartInstance = new Chart(document.getElementById("topProductsChart"), {
-        type: "bar",
-        data: {
-            labels: topData.map(x => x.name),
-            datasets: [{
-                data: topData.map(x => x.total),
-                backgroundColor: "#215c78",
-                borderColor: "#215c78",
-                borderWidth: 1
-            }]
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: "y",
+        layout: { padding: { right: 110 } },
+        plugins: {
+            legend: { display: false },
+            datalabels: {
+                anchor: "end",
+                align: "right",
+                color: "#215c78",
+                font: { weight: "bold", size: 11 },
+                formatter: function(value) {
+                    if (value >= 10000000) return (value / 10000000).toFixed(2) + "Cr";
+                    if (value >= 100000) return (value / 100000).toFixed(2) + "L";
+                    if (value >= 1000) return (value / 1000).toFixed(2) + "K";
+                    return formatPlain(value);
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return "Net Sales: " + formatCurrency(context.raw);
+                    }
+                }
+            }
         },
-        options: getProductChartOptions()
-    });
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: { color: "#215c78" },
+                grid: { color: "#d7e9f1" }
+            },
+            y: {
+                ticks: {
+                    color: "#215c78",
+                    autoSkip: false
+                },
+                grid: { color: "#d7e9f1" }
+            }
+        }
+    };
 
-    bottomProductsChartInstance = new Chart(document.getElementById("bottomProductsChart"), {
-        type: "bar",
-        data: {
-            labels: bottomData.map(x => x.name),
-            datasets: [{
-                data: bottomData.map(x => x.total),
-                backgroundColor: "#215c78",
-                borderColor: "#215c78",
-                borderWidth: 1
-            }]
-        },
-        options: getProductChartOptions()
-    });
+    function drawChart(canvasId, data) {
+        return new Chart(document.getElementById(canvasId), {
+            type: "bar",
+            data: {
+                labels: data.map(x => x.name),
+                datasets: [{
+                    label: "Net Sales",
+                    data: data.map(x => x.total),
+                    backgroundColor: "#215c78",
+                    borderColor: "#215c78",
+                    borderWidth: 1,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8
+                }]
+            },
+            options
+        });
+    }
+
+    cityChartInstance = drawChart("cityChart", cityData);
+    expertiseChartInstance = drawChart("expertiseChart", expertiseData);
+    stateChartInstance = drawChart("stateChart", stateData);
 }
-
 
 function renderGeoCharts() {
     const limit = parseInt(document.getElementById("geoLimitFilter")?.value || "10", 10);
@@ -2246,7 +2298,12 @@ async function initDashboard() {
 
         allData = await fetchAllRecords();
         productData = await fetchProductRecords();
-        expertMasterData = await fetchExpertMasterRecords();
+        try {
+            expertMasterData = await fetchExpertMasterRecords();
+        } catch (e) {
+            console.log("Expert master permission issue:", e);
+            expertMasterData = [];
+        }
 
         console.log("Expert Master Count:", expertMasterData.length);
         console.log("First Expert Master Row:", expertMasterData[0]);
@@ -2277,7 +2334,8 @@ async function refreshDashboard() {
         "expertYearFilter", "expertMonthFilter", "trendYearFilter",
         "yearlyYearFilter", "productYearFilter", "productMonthFilter",
         "affiliateExpertFilter", "affiliateYearFilter", "affiliateMonthFilter",
-        "repeatYearFilter", "repeatMonthFilter"
+        "repeatYearFilter", "repeatMonthFilter",
+        "geoYearFilter", "geoMonthFilter"
     ].forEach(clearMultiFilter);
 
     document.getElementById("dateFilter").value = "";

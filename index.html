@@ -293,7 +293,7 @@
 
             .chart-wrap {
                 position: relative;
-                height: 7000px;
+                height: 700px;
             }
 
             .section-divider {
@@ -1612,17 +1612,25 @@ function renderExpertCharts() {
 
 function renderGeoCharts() {
     const limit = parseInt(document.getElementById("geoLimitFilter")?.value || "10", 10);
+    const selectedYears = getSelectedMultiValues("geoYearFilter");
+    const selectedMonths = getSelectedMultiValues("geoMonthFilter");
 
     const cityMap = {};
     const stateMap = {};
     const expertiseMap = {};
 
     allData.forEach(row => {
-        const type = getType(row).toLowerCase();
-        const total = getTotalSales(row);
-        const commission = getCommission(row);
+        const rowYear = getYear(row);
 
-        // Net Sales logic
+        let rowMonth = getMonth(row);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0, 3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+        if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+
         const netSales = getNetSalesForRow(row);
 
         const city = cleanGroupName(getCity(row));
@@ -1631,20 +1639,9 @@ function renderGeoCharts() {
 
         if (!city && !state && !expertise) return;
 
-        if (city) {
-            if (!cityMap[city]) cityMap[city] = 0;
-            cityMap[city] += netSales;
-        }
-
-        if (state) {
-            if (!stateMap[state]) stateMap[state] = 0;
-            stateMap[state] += netSales;
-        }
-
-        if (expertise) {
-            if (!expertiseMap[expertise]) expertiseMap[expertise] = 0;
-            expertiseMap[expertise] += netSales;
-        }
+        if (city) cityMap[city] = (cityMap[city] || 0) + netSales;
+        if (state) stateMap[state] = (stateMap[state] || 0) + netSales;
+        if (expertise) expertiseMap[expertise] = (expertiseMap[expertise] || 0) + netSales;
     });
 
     function prepareData(map) {
@@ -1667,9 +1664,7 @@ function renderGeoCharts() {
         responsive: true,
         maintainAspectRatio: false,
         indexAxis: "y",
-        layout: {
-            padding: { right: 110 }
-        },
+        layout: { padding: { right: 110 } },
         plugins: {
             legend: { display: false },
             datalabels: {
@@ -1677,10 +1672,7 @@ function renderGeoCharts() {
                 align: "right",
                 offset: 6,
                 color: "#215c78",
-                font: {
-                    weight: "bold",
-                    size: 11
-                },
+                font: { weight: "bold", size: 11 },
                 formatter: function(value) {
                     if (value >= 10000000) return (value / 10000000).toFixed(2) + "Cr";
                     if (value >= 100000) return (value / 100000).toFixed(2) + "L";
@@ -1711,7 +1703,11 @@ function renderGeoCharts() {
                 grid: { color: "#d7e9f1" }
             },
             y: {
-                ticks: { color: "#215c78" },
+                ticks: {
+                    color: "#215c78",
+                    autoSkip: false,
+                    font: { size: 10 }
+                },
                 grid: { color: "#d7e9f1" }
             }
         }

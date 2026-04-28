@@ -456,14 +456,14 @@
             <div class="chart-filter-bar">
             <select id="topExpertLimitFilter" onchange="renderExpertCharts()">
                 <option value="5">Top 5</option>
-                <option value="10">Top 10</option>
+                <option value="10" selected>Top 10</option>
                 <option value="20">Top 20</option>
                 <option value="30">Top 30</option>
             </select>
 
             <select id="bottomExpertLimitFilter" onchange="renderExpertCharts()">
                 <option value="5">Last 5</option>
-                <option value="10">Last 10</option>
+                <option value="10" selected>Last 10</option>
                 <option value="20">Last 20</option>
                 <option value="30">Last 30</option>
             </select>
@@ -659,21 +659,21 @@
 
             <div class="chart-grid">
                 <div class="chart-card">
-                    <h4>Top Cities (Net Sales)</h4>
+                    <h4>Top Cities (Sales)</h4>
                     <div class="chart-wrap">
                         <canvas id="cityChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-card">
-                    <h4>Top Expertise (Net Sales)</h4>
+                    <h4>Top Expertise (Sales)</h4>
                     <div class="chart-wrap">
                         <canvas id="expertiseChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-card">
-                    <h4>Top States (Net Sales)</h4>
+                    <h4>Top States (Sales)</h4>
                     <div class="chart-wrap">
                         <canvas id="stateChart"></canvas>
                     </div>
@@ -2311,8 +2311,8 @@ async function refreshDashboard() {
 
     document.getElementById("dateFilter").value = "";
 
-    document.getElementById("topExpertLimitFilter").value = "5";
-    document.getElementById("bottomExpertLimitFilter").value = "5";
+    document.getElementById("topExpertLimitFilter").value = "10";
+    document.getElementById("bottomExpertLimitFilter").value = "10";
     document.getElementById("expertTypeFilter").value = "";
 
     document.getElementById("trendTypeFilter").value = "";

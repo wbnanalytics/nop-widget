@@ -397,11 +397,7 @@
         <!-- <p class="subtitle">v2</p> -->
 
         <div class="filters-wrap">
-            <select id="typeFilter" onchange="applyFilters()">
-                <!-- <option value="">All Type</option> -->
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
-            </select>
+            <select id="typeFilter" onchange="applyFilters()"></select>
             <div class="multi-filter" id="yearBox">
                 <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('yearBox')">All Year</button>
                 <div class="multi-filter-menu" id="yearFilter"></div>
@@ -822,15 +818,21 @@ function parseDate(value) {
 }
 
 function getType(row) {
-    const supplement = getField(row, ["Supplements", "Supplement"]);
+    let value = getField(row, ["Type", "Order Type", "Sale Type"]);
 
-    // If supplement exists → OFFLINE
-    if (supplement && String(supplement).trim() !== "") {
-        return "offline";
+    if (value) return String(value).trim();
+
+    const keys = Object.keys(row || {});
+    const foundKey = keys.find(k => {
+        const n = norm(k);
+        return n === "type" || n.includes("type");
+    });
+
+    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+        return String(row[foundKey]).trim();
     }
 
-    // Else → ONLINE (Shopify)
-    return "online";
+    return "";
 }
 
 function getNutritionist(row) {
@@ -1786,7 +1788,6 @@ function renderProductCharts() {
     const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
     const selectedYears = getSelectedMultiValues("productYearFilter");
     const selectedMonths = getSelectedMultiValues("productMonthFilter");
-    const selectedType = document.getElementById("typeFilter")?.value || "";
 
     const productMap = {};
 
@@ -1806,18 +1807,9 @@ function renderProductCharts() {
 
         if (selectedYears.length && !selectedYears.includes(rowYear)) return;
         if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
-        if (selectedType && getType(salesRow) !== selectedType) return;
-        if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
     
 
-        let product = "";
-        const salesRowType = getType(salesRow);
-
-        if (salesRowType === "offline") {
-            product = getField(salesRow, ["Supplements", "Supplement"]);
-        } else {
-            product = getProductName(row);
-        }
+        const product = getProductName(row);
         const qty = getProductQty(row);
 
         if (!product || qty <= 0) return;

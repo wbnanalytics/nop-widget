@@ -423,7 +423,7 @@
 
         <div class="cards">
             <div class="mini-card">
-                <div class="label">Total Sales</div>
+                <div class="label">Gross Sales</div>
                 <div class="value" id="cardTotalSales">₹ 0.00</div>
             </div>
             <div class="mini-card">
@@ -511,7 +511,7 @@
 
         <div class="section trend-section">
             <div class="trend-header">
-            <h3 style="margin:0;">Total Sales And Net Sales Trend</h3>
+            <h3 style="margin:0;">Gross Sales And Net Sales Trend</h3>
 
             <div class="trend-controls">
                 <select id="trendTypeFilter" class="trend-filter" onchange="renderSalesTrendChart()">
@@ -892,7 +892,7 @@ function getISODate(row) {
 }
 
 function getTotalSales(row) {
-    return getNumber(getField(row, ["Total Amount", "Total_Amount", "Total Sales", "Total_Sales"]));
+    return getNumber(getField(row, ["Total Amount", "Total_Amount", "Gross Sales", "Total_Sales"]));
 }
 
 function getNetSales(row) {
@@ -1385,7 +1385,7 @@ function renderYearlyTable(selectedYears) {
                 <thead>
                     <tr>
                         <th>Months</th>
-                        <th class="number">Total Sales</th>
+                        <th class="number">Gross Sales</th>
                         <th class="number">Commission</th>
                         <th class="number">Net Sales</th>
                         <th class="number">Offline Sale</th>
@@ -2185,7 +2185,7 @@ function renderSalesTrendChart() {
             labels: labels,
             datasets: [
                 {
-                    label: "Total Sales",
+                    label: "Gross Sales",
                     data: totalSalesData,
                     borderColor: "#cfeaf7",
                     backgroundColor: "#cfeaf7",
@@ -2498,7 +2498,7 @@ function exportDashboardReport() {
 
         <table class="cards">
             <tr>
-                <td>Total Sales</td><td>${totalSales}</td>
+                <td>Gross Sales</td><td>${totalSales}</td>
                 <td>Total Net Sales</td><td>${totalNetSales}</td>
                 <td>Total Offline Sales</td><td>${totalOfflineSales}</td>
                 <td>Grand Total</td><td>${grandTotal}</td>

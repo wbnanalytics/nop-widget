@@ -571,8 +571,8 @@
                 </select>
 
                 <select id="productTypeFilter" onchange="renderProductCharts()">
-                    <option value="">All Type</option>
-                    <option value="online" selected>Online</option>
+                    <option value="" selected>All Type</option>
+                    <option value="online" >Online</option>
                     <option value="offline">Offline</option>
                 </select>
 
@@ -628,7 +628,7 @@
             <div id="affiliateProductTable" class="loading">Loading...</div>
         </div>
 
-        <div class="section">
+        <!-- <div class="section">
             <h3>Highest Repeat Purchase Products</h3>
             <div class="section-filter-bar">
                 <div class="multi-filter" id="repeatYearBox">
@@ -641,7 +641,7 @@
                 </div>
             </div>
             <div id="repeatProductTable" class="loading">Loading...</div>
-        </div>
+        </div> -->
 
         <div class="section-divider"></div>
 
@@ -1192,8 +1192,7 @@ function populateFilters() {
     fillCheckboxFilter("affiliateYearFilter", years, "renderAffiliateProductTable", "All Year");
     fillCheckboxFilter("affiliateMonthFilter", months, "renderAffiliateProductTable", "All Month");
 
-    fillCheckboxFilter("repeatYearFilter", years, "renderRepeatProductTable", "All Year");
-    fillCheckboxFilter("repeatMonthFilter", months, "renderRepeatProductTable", "All Month");
+    
     fillCheckboxFilter("geoYearFilter", years, "renderGeoCharts", "All Year");
     fillCheckboxFilter("geoMonthFilter", months, "renderGeoCharts", "All Month");
     fillCheckboxFilter("expertNutritionistFilter", nutritionists, "renderExpertCharts", "All Nutritionist");
@@ -1819,7 +1818,7 @@ function renderGeoCharts() {
 function renderProductCharts() {
     const topLimit = parseInt(document.getElementById("topProductLimitFilter")?.value || "10", 10);
     const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
-    const selectedType = document.getElementById("productTypeFilter")?.value || "online";
+    const selectedType = document.getElementById("productTypeFilter")?.value || "";
     const selectedYears = getSelectedMultiValues("productYearFilter");
     const selectedMonths = getSelectedMultiValues("productMonthFilter");
 
@@ -2035,118 +2034,6 @@ function renderAffiliateProductTable() {
     container.innerHTML = html;
 }
 
-function getCustomerKey(row) {
-    return String(getField(row, [
-        "Customer Email",
-        "Customer_Email",
-        "Email",
-        "Customer ID",
-        "Customer_ID",
-        "Phone",
-        "Mobile"
-    ])).trim().toLowerCase();
-}
-
-function renderRepeatProductTable() {
-    const container = document.getElementById("repeatProductTable");
-    const selectedYears = getSelectedMultiValues("repeatYearFilter");
-    const selectedMonths = getSelectedMultiValues("repeatMonthFilter");
-
-    const customerProductOrders = {};
-
-    productData.forEach(row => {
-        const orderId = getProductOrderId(row);
-        const salesRow = getProductSalesMatch(orderId);
-
-        if (!salesRow) return;
-
-        const year = getYear(salesRow);
-
-        let month = getMonth(salesRow);
-        if (month) {
-            const x = month.toLowerCase().slice(0,3);
-            month = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
-        }
-
-        if (selectedYears.length && !selectedYears.includes(year)) return;
-        if (selectedMonths.length && !selectedMonths.includes(month)) return;
-
-        const product = getProductName(row);
-        const customer = getCustomerKey(salesRow) || getCustomerKey(row);
-
-        if (!product || !customer || !orderId) return;
-
-        const key = customer + "||" + product;
-
-        if (!customerProductOrders[key]) {
-            customerProductOrders[key] = {
-                product: product,
-                customer: customer,
-                orders: new Set()
-            };
-        }
-
-        customerProductOrders[key].orders.add(orderId);
-    });
-
-    const productRepeatCustomers = {};
-
-    Object.values(customerProductOrders).forEach(item => {
-        if (item.orders.size > 1) {
-            if (!productRepeatCustomers[item.product]) {
-                productRepeatCustomers[item.product] = 0;
-            }
-            productRepeatCustomers[item.product] += 1;
-        }
-    });
-
-    const list = Object.keys(productRepeatCustomers)
-        .map(product => ({
-            product,
-            repeatCustomers: productRepeatCustomers[product]
-        }))
-        .sort((a, b) => b.repeatCustomers - a.repeatCustomers);
-
-    if (!list.length) {
-        container.innerHTML = `<div class="empty">No repeat product data found.</div>`;
-        return;
-    }
-
-    const totalRepeatCustomers = list.reduce((sum, item) => sum + item.repeatCustomers, 0);
-
-    let html = `
-        <div class="compact-table-wrap">
-            <table id="repeatProductSummaryTable">
-                <thead>
-                    <tr>
-                        <th>Product Name</th>
-                        <th class="number">Repeat Customer Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-    list.forEach(item => {
-        html += `
-            <tr>
-                <td>${escapeHtml(item.product)}</td>
-                <td class="number">${item.repeatCustomers}</td>
-            </tr>
-        `;
-    });
-
-    html += `
-                <tr class="total-row">
-                    <td>Total</td>
-                    <td class="number">${totalRepeatCustomers}</td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-    `;
-
-    container.innerHTML = html;
-}
 
 function renderSalesTrendChart() {
     const selectedYears = getSelectedMultiValues("trendYearFilter");
@@ -2341,7 +2228,7 @@ async function initDashboard() {
         renderSalesTrendChart();
         renderProductCharts();
         renderAffiliateProductTable();
-        renderRepeatProductTable();
+        
         renderGeoCharts();
     } catch (error) {
         console.log("ERROR:", error);
@@ -2360,7 +2247,7 @@ async function refreshDashboard() {
         "trendYearFilter",
         "yearlyYearFilter", "productYearFilter", "productMonthFilter",
         "affiliateExpertFilter", "affiliateYearFilter", "affiliateMonthFilter",
-        "repeatYearFilter", "repeatMonthFilter",
+        
         "geoYearFilter", "geoMonthFilter"
     ].forEach(clearMultiFilter);
 
@@ -2374,7 +2261,7 @@ async function refreshDashboard() {
 
     document.getElementById("topProductLimitFilter").value = "10";
     document.getElementById("bottomProductLimitFilter").value = "10";
-    document.getElementById("productTypeFilter").value = "online";
+    document.getElementById("productTypeFilter").value = "";
 
     document.getElementById("geoLimitFilter").value = "10";
     document.getElementById("geoTypeFilter").value = "";
@@ -2385,7 +2272,7 @@ async function refreshDashboard() {
     renderSalesTrendChart();
     renderProductCharts();
     renderAffiliateProductTable();
-    renderRepeatProductTable();
+    
     renderGeoCharts();
 }
 
@@ -2541,7 +2428,7 @@ function exportDashboardReport() {
     const nutritionTable = document.getElementById("nutritionistSummaryTable");
     const yearlyTable = document.getElementById("yearlySalesTable");
     const affiliateTable = document.querySelector("#affiliateProductTable table");
-    const repeatTable = document.querySelector("#repeatProductTable table");
+    
     const geoLimitText = document.getElementById("geoLimitFilter")?.selectedOptions[0]?.text || "Top 10";
     const geoYearText = getMultiDisplayText("geoYearFilter");
     const geoMonthText = getMultiDisplayText("geoMonthFilter");
@@ -2652,8 +2539,7 @@ function exportDashboardReport() {
         <h3>Products Purchased By Each Affiliate</h3>
         ${affiliateTable ? convertTableForExcel(affiliateTable) : ""}
 
-        <h3>Highest Repeat Purchase Products</h3>
-        ${repeatTable ? convertTableForExcel(repeatTable) : ""}
+    
 
         <h3>City / Expertise / State Sales Reports</h3>
         <table class="filters">

@@ -570,6 +570,12 @@
                     <option value="20">Last 20</option>
                 </select>
 
+                <select id="productTypeFilter" onchange="renderProductCharts()">
+                    <option value="">All Type</option>
+                    <option value="online" selected>Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+
                 <div class="multi-filter" id="productYearBox">
                     <button type="button" class="multi-filter-btn" onclick="toggleMultiFilter('productYearBox')">All Year</button>
                     <div class="multi-filter-menu" id="productYearFilter"></div>
@@ -694,6 +700,7 @@
     <script>
 let allData = [];
 let productData = [];
+let soProductData = [];
 let expertMasterData = [];
 let expertMasterMap = {};
 let salesOrderMap = {};
@@ -1043,6 +1050,33 @@ async function fetchProductRecords() {
         const config = {
             app_name: "nop-sales-summary",
             report_name: "Product_Summary_Report",
+            max_records: 1000
+        };
+
+        if (cursor) config.record_cursor = cursor;
+
+        const res = await ZOHO.CREATOR.DATA.getRecords(config);
+        merged = merged.concat(res.data || []);
+
+        if (res.record_cursor) {
+            cursor = res.record_cursor;
+        } else {
+            break;
+        }
+    }
+
+    return merged;
+}
+
+
+async function fetchSOProductRecords() {
+    let merged = [];
+    let cursor = null;
+
+    while (true) {
+        const config = {
+            app_name: "nop-sales-summary",
+            report_name: "SO_Report_Report",
             max_records: 1000
         };
 
@@ -1782,40 +1816,46 @@ function renderGeoCharts() {
     });
 }
 
-
 function renderProductCharts() {
     const topLimit = parseInt(document.getElementById("topProductLimitFilter")?.value || "10", 10);
     const bottomLimit = parseInt(document.getElementById("bottomProductLimitFilter")?.value || "10", 10);
+    const selectedType = document.getElementById("productTypeFilter")?.value || "online";
     const selectedYears = getSelectedMultiValues("productYearFilter");
     const selectedMonths = getSelectedMultiValues("productMonthFilter");
 
     const productMap = {};
 
-    productData.forEach(row => {
-        const orderId = getProductOrderId(row);
-        const salesRow = getProductSalesMatch(orderId);
-        if (!salesRow) return;
-
-        const rowYear = getYear(salesRow);
-
-        let rowMonth = getMonth(salesRow);
-        if (rowMonth) {
-            const x = rowMonth.toLowerCase().slice(0, 3);
-            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
-        }
-
-
-        if (selectedYears.length && !selectedYears.includes(rowYear)) return;
-        if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
-    
-
-        const product = getProductName(row);
-        const qty = getProductQty(row);
-
+    function addProduct(product, qty) {
         if (!product || qty <= 0) return;
-
         productMap[product] = (productMap[product] || 0) + qty;
-    });
+    }
+
+    if (selectedType === "online" || selectedType === "") {
+        productData.forEach(row => {
+            const orderId = getProductOrderId(row);
+            const salesRow = getProductSalesMatch(orderId);
+            if (!salesRow) return;
+
+            const rowYear = getYear(salesRow);
+
+            let rowMonth = getMonth(salesRow);
+            if (rowMonth) {
+                const x = rowMonth.toLowerCase().slice(0, 3);
+                rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+            }
+
+            if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+            if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+
+            addProduct(getProductName(row), getProductQty(row));
+        });
+    }
+
+    if (selectedType === "offline" || selectedType === "") {
+        soProductData.forEach(row => {
+            addProduct(getProductName(row), 1);
+        });
+    }
 
     const list = Object.keys(productMap)
         .map(name => ({ name, total: productMap[name] }))
@@ -2281,6 +2321,7 @@ async function initDashboard() {
 
         allData = await fetchAllRecords();
         productData = await fetchProductRecords();
+        soProductData = await fetchSOProductRecords();
         try {
             expertMasterData = await fetchExpertMasterRecords();
         } catch (e) {
@@ -2333,6 +2374,7 @@ async function refreshDashboard() {
 
     document.getElementById("topProductLimitFilter").value = "10";
     document.getElementById("bottomProductLimitFilter").value = "10";
+    document.getElementById("productTypeFilter").value = "online";
 
     document.getElementById("geoLimitFilter").value = "10";
     document.getElementById("geoTypeFilter").value = "";
@@ -2392,6 +2434,102 @@ function buildGeoExportTable(title, chartInstance) {
     });
 
     html += `
+            </tbody>
+        </table>
+    `;
+
+    return html;
+}
+
+function buildFullProductPurchaseExportTable() {
+    const selectedType = document.getElementById("productTypeFilter")?.value || "online";
+    const selectedYears = getSelectedMultiValues("productYearFilter");
+    const selectedMonths = getSelectedMultiValues("productMonthFilter");
+
+    const productMap = {};
+
+    function addProduct(product, qty, type) {
+        if (!product || qty <= 0) return;
+
+        const key = type + "||" + product;
+
+        if (!productMap[key]) {
+            productMap[key] = {
+                type: type,
+                product: product,
+                qty: 0
+            };
+        }
+
+        productMap[key].qty += qty;
+    }
+
+    if (selectedType === "online" || selectedType === "") {
+        productData.forEach(row => {
+            const orderId = getProductOrderId(row);
+            const salesRow = getProductSalesMatch(orderId);
+            if (!salesRow) return;
+
+            const rowYear = getYear(salesRow);
+
+            let rowMonth = getMonth(salesRow);
+            if (rowMonth) {
+                const x = rowMonth.toLowerCase().slice(0, 3);
+                rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+            }
+
+            if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+            if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+
+            addProduct(getProductName(row), getProductQty(row), "Online");
+        });
+    }
+
+    if (selectedType === "offline" || selectedType === "") {
+        soProductData.forEach(row => {
+            addProduct(getProductName(row), 1, "Offline");
+        });
+    }
+
+    const list = Object.values(productMap)
+        .sort((a, b) => b.qty - a.qty);
+
+    if (!list.length) {
+        return `<h3>Product Purchase Reports</h3><p>No product data found.</p>`;
+    }
+
+    let totalQty = 0;
+
+    let html = `
+        <h3>Product Purchase Reports - All Available Data</h3>
+        <table class="report">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Product Name</th>
+                    <th class="num">Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    list.forEach(item => {
+        totalQty += item.qty;
+
+        html += `
+            <tr>
+                <td>${escapeHtml(item.type)}</td>
+                <td>${escapeHtml(item.product)}</td>
+                <td class="num">${item.qty}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            <tr class="total-row">
+                <td colspan="2">Total</td>
+                <td class="num">${totalQty}</td>
+            </tr>
             </tbody>
         </table>
     `;
@@ -2510,6 +2648,7 @@ function exportDashboardReport() {
 
         <h3>Yearly Sales</h3>
         ${convertTableForExcel(yearlyTable)}
+        ${buildFullProductPurchaseExportTable()}
         <h3>Products Purchased By Each Affiliate</h3>
         ${affiliateTable ? convertTableForExcel(affiliateTable) : ""}
 

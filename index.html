@@ -558,6 +558,13 @@
             <h3>Product Purchase Reports</h3>
 
             <div class="chart-filter-bar">
+
+                <select id="productTypeFilter" onchange="renderProductCharts()">
+                    <option value="" selected>All Type</option>
+                    <option value="online" >Online</option>
+                    <option value="offline">Offline</option>
+                </select>
+
                 <select id="topProductLimitFilter" onchange="renderProductCharts()">
                     <option value="5">Top 5</option>
                     <option value="10" selected>Top 10</option>
@@ -568,12 +575,6 @@
                     <option value="5">Last 5</option>
                     <option value="10" selected>Last 10</option>
                     <option value="20">Last 20</option>
-                </select>
-
-                <select id="productTypeFilter" onchange="renderProductCharts()">
-                    <option value="" selected>All Type</option>
-                    <option value="online" >Online</option>
-                    <option value="offline">Offline</option>
                 </select>
 
                 <div class="multi-filter" id="productYearBox">

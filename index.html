@@ -1631,11 +1631,13 @@ function renderExpertCharts() {
                             size: 11
                         },
                         formatter: function(value) {
-                        if (value >= 10000000) return (value / 10000000).toFixed(2) + "Cr";
-                        if (value >= 100000) return (value / 100000).toFixed(2) + "L";
-                        if (value >= 1000) return (value / 1000).toFixed(2) + "K";
-                        return value;
-                    }
+                            value = Math.round(Number(value || 0));
+
+                            if (value >= 10000000) return Math.round(value / 10000000) + "Cr";
+                            if (value >= 100000) return Math.round(value / 100000) + "L";
+                            if (value >= 1000) return Math.round(value / 1000) + "K";
+                            return value.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+                        }
                     }
             },
             scales: {

@@ -1512,7 +1512,7 @@ function renderExpertCharts() {
     filtered.forEach(row => {
         const expert = getExpert(row) || "Unassigned";
         if (!grouped[expert]) grouped[expert] = 0;
-        grouped[expert] += getTotalSales(row);
+        grouped[expert] += getNetSalesForRow(row);
     });
 
     const list = Object.keys(grouped)

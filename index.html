@@ -1854,10 +1854,22 @@ function renderProductCharts() {
     }
 
     if (selectedType === "offline" || selectedType === "") {
-        soProductData.forEach(row => {
-            addProduct(getProductName(row), 1);
-        });
-    }
+    soProductData.forEach(row => {
+
+        const rowYear = getYear(row);
+
+        let rowMonth = getMonth(row);
+        if (rowMonth) {
+            const x = rowMonth.toLowerCase().slice(0, 3);
+            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+        }
+
+        if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+        if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+
+        addProduct(getProductName(row), 1);
+    });
+}
 
     const list = Object.keys(productMap)
         .map(name => ({ name, total: productMap[name] }))

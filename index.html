@@ -920,7 +920,13 @@ function getProductQty(row) {
 }
 
 function getProductOrderId(row) {
-    return String(getField(row, ["Order_Id", "Order Id", "Shopify_Name"])).trim();
+    return String(getField(row, [
+        "Order_Id",
+        "Order Id",
+        "Shopify_Name",
+        "SO_Number",
+        "SO Number"
+    ])).trim();
 }
 
 function getProductExpert(row) {
@@ -1854,21 +1860,29 @@ function renderProductCharts() {
     }
 
     if (selectedType === "offline" || selectedType === "") {
-    soProductData.forEach(row => {
+        soProductData.forEach(row => {
+            const orderId = getProductOrderId(row);
+            const salesRow = getProductSalesMatch(orderId);
 
-        const rowYear = getYear(row);
+            if ((selectedYears.length || selectedMonths.length) && !salesRow) return;
 
-        let rowMonth = getMonth(row);
-        if (rowMonth) {
-            const x = rowMonth.toLowerCase().slice(0, 3);
-            rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
-        }
+            if (salesRow) {
+                const rowYear = getYear(salesRow);
 
-        if (selectedYears.length && !selectedYears.includes(rowYear)) return;
-        if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+                let rowMonth = getMonth(salesRow);
+                if (rowMonth) {
+                    const x = rowMonth.toLowerCase().slice(0, 3);
+                    rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+                }
 
-        addProduct(getProductName(row), 1);
-    });
+                if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+                if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+            }
+
+            addProduct(getProductName(row), 1);
+        });
+    }
+
 }
 
     const list = Object.keys(productMap)
@@ -2389,6 +2403,24 @@ function buildFullProductPurchaseExportTable() {
 
     if (selectedType === "offline" || selectedType === "") {
         soProductData.forEach(row => {
+            const orderId = getProductOrderId(row);
+            const salesRow = getProductSalesMatch(orderId);
+
+            if ((selectedYears.length || selectedMonths.length) && !salesRow) return;
+
+            if (salesRow) {
+                const rowYear = getYear(salesRow);
+
+                let rowMonth = getMonth(salesRow);
+                if (rowMonth) {
+                    const x = rowMonth.toLowerCase().slice(0, 3);
+                    rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
+                }
+
+                if (selectedYears.length && !selectedYears.includes(rowYear)) return;
+                if (selectedMonths.length && !selectedMonths.includes(rowMonth)) return;
+            }
+
             addProduct(getProductName(row), 1, "Offline");
         });
     }

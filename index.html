@@ -2412,7 +2412,8 @@ function buildFullProductPurchaseExportTable() {
                 const rowYear = getYear(salesRow);
 
                 let rowMonth = getMonth(salesRow);
-                if (rowMonth) {
+                if (rowMonth) 
+                {
                     const x = rowMonth.toLowerCase().slice(0, 3);
                     rowMonth = monthOrder.find(z => z.toLowerCase().startsWith(x)) || "";
                 }

@@ -937,7 +937,13 @@ function buildSalesOrderMap() {
     salesOrderMap = {};
 
     allData.forEach(row => {
-        const orderId = String(getField(row, ["Order Id", "Order_Id"])).trim();
+        const orderId = String(getField(row, [
+            "Order Id",
+            "Order_Id",
+            "SO_Number",
+            "SO Number",
+            "Shopify_Name"
+        ])).trim();
         if (orderId) salesOrderMap[orderId] = row;
     });
 }
@@ -1882,8 +1888,6 @@ function renderProductCharts() {
             addProduct(getProductName(row), 1);
         });
     }
-
-}
 
     const list = Object.keys(productMap)
         .map(name => ({ name, total: productMap[name] }))

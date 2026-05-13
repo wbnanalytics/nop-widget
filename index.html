@@ -2102,10 +2102,7 @@ function renderSalesTrendChart() {
         const type = getType(row).toLowerCase();
         const commission = getCommission(row);
 
-        if (type === "offline") {
-            monthly[month].totalSales += total;
-            monthly[month].netSales += total;
-        } else {
+        if (type !== "offline") {
             monthly[month].totalSales += total;
             monthly[month].netSales += (total - commission);
         }
